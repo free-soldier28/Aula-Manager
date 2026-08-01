@@ -1,0 +1,61 @@
+using Aula.Core.Models;
+using Aula.Core.Protocol;
+
+namespace Aula.Core.Services;
+
+public sealed class LightingService
+{
+    private const int MaxBrightness = 4;
+    private const int MaxSpeed = 4;
+    private const byte ColorfulFlag = 0x07;
+    private const byte SingleColorFlag = 0x00;
+
+    private readonly SinowealthProtocol _protocol;
+    private readonly ModelConfig _model;
+
+    public LightingService(SinowealthProtocol protocol)
+    {
+        _protocol = protocol;
+        _model = protocol.Model;
+    }
+
+    public KeyboardConfig ReadConfig() => KeyboardConfig.Parse(_protocol.ReadConfigRaw(), _model);
+
+    public void Apply(LightingConfig config)
+    {
+        LedEffect? effect = FindEffect(config.EffectId) ?? throw new AulaProtocolException(
+            $"Unknown effect id {config.EffectId}.");
+
+        var raw = _protocol.ReadConfigRaw();
+
+        raw[_model.CustomModeOffset] = 0x00;
+        raw[_model.EffectIdOffset] = (byte)config.EffectId;
+
+        int paramBase = _model.EffectParamsBase + _model.EffectParamsStride * config.EffectId;
+
+        if (effect.HasBrightness && config.Brightness is int brightness)
+        {
+            raw[paramBase] = (byte)Math.Clamp(brightness, 0, MaxBrightness);
+        }
+
+        if (effect.HasSpeed && config.Speed is int speed)
+        {
+            byte flags = config.Colorful ? ColorfulFlag : SingleColorFlag;
+            raw[paramBase + 1] = (byte)((Math.Clamp(speed, 0, MaxSpeed) << 4) | flags);
+        }
+
+        _protocol.WriteConfigRaw(raw);
+
+        if (config.EffectId == 1 && config.Color is RgbColor color)
+        {
+            _protocol.WriteColorProfile(color);
+        }
+    }
+
+    public void TurnOff() => Apply(new LightingConfig(EffectId: 0));
+
+    public LedEffect? FindEffect(int id) => _model.Effects.FirstOrDefault(e => e.Id == id);
+
+    public LedEffect? FindEffect(string name) =>
+        _model.Effects.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+}

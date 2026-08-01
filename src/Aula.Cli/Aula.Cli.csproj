@@ -4,6 +4,10 @@
     <ProjectReference Include="..\Aula.Core\Aula.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="HidSharp" Version="2.6.4" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>

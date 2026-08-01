@@ -4,6 +4,7 @@
     <Project Path="src/Aula.Core/Aula.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Aula.Cli.Tests/Aula.Cli.Tests.csproj" />
     <Project Path="tests/Aula.Core.Tests/Aula.Core.Tests.csproj" />
   </Folder>
 </Solution>
