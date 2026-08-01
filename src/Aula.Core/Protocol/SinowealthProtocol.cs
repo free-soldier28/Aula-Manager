@@ -45,9 +45,18 @@ public sealed class SinowealthProtocol
         _transport.SetFeature(F75Report.CreateColorProfile(Model, color));
     }
 
+    public byte[] ReadColorProfileRaw()
+    {
+        _transport.SetFeature(F75Report.CreateColorProfileRead(Model));
+
+        var response = ReadResponse(F75Report.CmdReadColorProfile);
+        return response;
+    }
+
     private byte[] ReadResponse(byte expectedCommand)
     {
         var response = new byte[Model.ReportLength];
+        response[0] = Model.ReportId;
         _transport.GetFeature(response);
 
         if (response[0] != Model.ReportId || response[1] != expectedCommand)

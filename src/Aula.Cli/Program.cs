@@ -96,13 +96,14 @@ public static class Program
     private static int RunEffect(EffectCommand c)
     {
         using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
-        var config = new LightingConfig(c.EffectId, c.Brightness, c.Speed, c.Color, c.Colorful);
+        var config = new LightingConfig(c.EffectId, c.Brightness, c.Speed, c.Color, c.Colorful, c.RawFlags);
 
         keyboard.Lighting.Apply(config);
 
         string colorText = c.Color is { } color ? color.ToHex() : c.Colorful ? "colorful" : "-";
+        string flagsText = c.RawFlags is { } f ? $" flags=0x{f:X2}" : "";
         Console.WriteLine($"Applied effect '{config.EffectId}' brightness={config.Brightness?.ToString() ?? "-"} " +
-                          $"speed={config.Speed?.ToString() ?? "-"} color={colorText}");
+                          $"speed={config.Speed?.ToString() ?? "-"} color={colorText}{flagsText}");
         return 0;
     }
 
@@ -125,6 +126,14 @@ public static class Program
 
         Console.WriteLine($"Raw ({config.Raw.Length} bytes):");
         Console.WriteLine(FormatHex(config.Raw));
+
+        if (keyboard is ISinowealthDiagnostics diagnostics)
+        {
+            byte[] profile = diagnostics.ReadColorProfileRaw();
+            Console.WriteLine($"Color profile ({profile.Length} bytes):");
+            Console.WriteLine(FormatHex(profile));
+        }
+
         return 0;
     }
 

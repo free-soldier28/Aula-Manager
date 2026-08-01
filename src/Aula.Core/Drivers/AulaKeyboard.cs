@@ -32,5 +32,7 @@ public sealed class AulaKeyboard : IAulaKeyboard, ISinowealthDiagnostics
 
     public byte[] QueryModel() => _protocol.QueryModel();
 
+    public byte[] ReadColorProfileRaw() => _protocol.ReadColorProfileRaw();
+
     public void Dispose() => _transport.Dispose();
 }

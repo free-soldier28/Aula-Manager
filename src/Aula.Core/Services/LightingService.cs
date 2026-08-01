@@ -39,15 +39,24 @@ public sealed class LightingService : ILightingController
             raw[paramBase] = (byte)Math.Clamp(brightness, 0, MaxBrightness);
         }
 
-        if (effect.HasSpeed && config.Speed is int speed)
+        if (config.RawFlags is byte rawFlags)
+        {
+            raw[paramBase + 1] = rawFlags;
+        }
+        else if (effect.HasSpeed && config.Speed is int speed)
         {
             byte flags = config.Colorful ? ColorfulFlag : SingleColorFlag;
             raw[paramBase + 1] = (byte)((Math.Clamp(speed, 0, MaxSpeed) << 4) | flags);
         }
 
+        if (effect.HasColor && config.Color is not null && !effect.HasSpeed)
+        {
+            raw[paramBase + 1] = config.Colorful ? ColorfulFlag : SingleColorFlag;
+        }
+
         _protocol.WriteConfigRaw(raw);
 
-        if (config.EffectId == 1 && config.Color is RgbColor color)
+        if (config.Color is RgbColor color)
         {
             _protocol.WriteColorProfile(color);
         }

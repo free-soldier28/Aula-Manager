@@ -7,6 +7,7 @@ public static class F75Report
     public const byte CmdModelQuery = 0x82;
     public const byte CmdReadConfig = 0x84;
     public const byte CmdWriteConfig = 0x04;
+    public const byte CmdReadColorProfile = 0x8A;
     public const byte CmdColorProfile = 0x0A;
     public const byte CmdPerKey = 0x06;
 
@@ -52,6 +53,15 @@ public static class F75Report
         buffer[31] = color.B;
         buffer[0x202] = 0x5A;
         buffer[0x203] = 0xA5;
+        return buffer;
+    }
+
+    public static byte[] CreateColorProfileRead(ModelConfig model)
+    {
+        var buffer = new byte[model.ReportLength];
+        buffer[0] = model.ReportId;
+        buffer[1] = CmdReadColorProfile;
+        buffer[7] = 0x02;
         return buffer;
     }
 

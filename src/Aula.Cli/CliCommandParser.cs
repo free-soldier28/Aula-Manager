@@ -23,7 +23,8 @@ public sealed record EffectCommand(
     int? Brightness,
     int? Speed,
     RgbColor? Color,
-    bool Colorful) : CliCommand;
+    bool Colorful,
+    byte? RawFlags = null) : CliCommand;
 
 public sealed record OffCommand(string Model) : CliCommand;
 
@@ -89,6 +90,7 @@ public static class CliCommandParser
         int? speed = null;
         RgbColor? color = null;
         bool colorful = false;
+        byte? rawFlags = null;
         string model = "f75";
 
         for (int i = 0; i < rest.Length; i++)
@@ -111,6 +113,9 @@ public static class CliCommandParser
                 case "-c":
                     color = ParseColor(rest, ref i);
                     break;
+                case "--raw-flags":
+                    rawFlags = ParseByte(rest, ref i, arg);
+                    break;
                 case "--model":
                 case "-m":
                     model = Next(rest, ref i, arg);
@@ -120,7 +125,7 @@ public static class CliCommandParser
             }
         }
 
-        return new EffectCommand(model, effectId, brightness, speed, color, colorful);
+        return new EffectCommand(model, effectId, brightness, speed, color, colorful, rawFlags);
     }
 
     private static string GetModel(string[] args)
@@ -163,6 +168,17 @@ public static class CliCommandParser
         return result;
     }
 
+    private static byte ParseByte(string[] args, ref int i, string flag)
+    {
+        string value = Next(args, ref i, flag);
+        if (!byte.TryParse(value, System.Globalization.NumberStyles.HexNumber, null, out byte result))
+        {
+            throw new CliParseException($"Invalid byte '{value}' for {flag}. Use hex, e.g. 0x20.");
+        }
+
+        return result;
+    }
+
     private static RgbColor ParseColor(string[] args, ref int i)
     {
         string value = Next(args, ref i, "--color");
@@ -178,6 +194,11 @@ public static class CliCommandParser
             }
         }
 
+        if (value.Length == 6 && value.All(Uri.IsHexDigit))
+        {
+            return RgbColor.FromHex("#" + value);
+        }
+
         if (int.TryParse(value, out int r) &&
             i + 2 < args.Length &&
             int.TryParse(args[i + 1], out int g) &&
@@ -187,7 +208,7 @@ public static class CliCommandParser
             return RgbColor.FromRgb(r, g, b);
         }
 
-        throw new CliParseException($"Invalid color '{value}'. Use --color #RRGGBB or --color R G B.");
+        throw new CliParseException($"Invalid color '{value}'. Use --color #RRGGBB, --color RRGGBB or --color R G B.");
     }
 
     private static string Next(string[] args, ref int i, string flag)
