@@ -1,0 +1,28 @@
+## .NET build artifacts
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+
+## IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.userosscache
+
+## Test results
+TestResults/
+*.trx
+
+## Publish output
+publish/
+out/
+
+## NuGet
+*.nupkg
+packages/
+
+## Local config
+*.local.json
