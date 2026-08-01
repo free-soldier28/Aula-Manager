@@ -41,6 +41,7 @@ public static class Program
         EffectsCommand c => RunEffects(c),
         EffectCommand c => RunEffect(c),
         OffCommand c => RunEffect(new EffectCommand(c.Model, 0, null, null, null, false)),
+        PerKeyCommand c => RunPerKey(c),
         DumpCommand c => RunDump(c),
         _ => 0,
     };
@@ -104,6 +105,72 @@ public static class Program
         string flagsText = c.RawFlags is { } f ? $" flags=0x{f:X2}" : "";
         Console.WriteLine($"Applied effect '{config.EffectId}' brightness={config.Brightness?.ToString() ?? "-"} " +
                           $"speed={config.Speed?.ToString() ?? "-"} color={colorText}{flagsText}");
+        return 0;
+    }
+
+    private static int RunPerKey(PerKeyCommand c)
+    {
+        const int LedCount = 126;
+
+        using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
+
+        var colors = new RgbColor[LedCount];
+        for (int i = 0; i < LedCount; i++)
+        {
+            colors[i] = new RgbColor(0, 0, 0);
+        }
+
+        if (c.KeyColors is { Count: > 0 } keyColors)
+        {
+            IKeyboardLayout layout = keyboard.Layout;
+            foreach ((string key, RgbColor color) in keyColors)
+            {
+                int index = layout.GetLedIndex(key);
+                if (index < 0)
+                {
+                    throw new AulaException($"Unknown key '{key}'. Known keys: {string.Join(", ", layout.Keys)}");
+                }
+
+                colors[index] = color;
+            }
+
+            if (c.FillAll)
+            {
+                for (int i = 0; i < LedCount; i++)
+                {
+                    if (colors[i] == default)
+                    {
+                        colors[i] = c.Color;
+                    }
+                }
+            }
+        }
+        else if (c.LedIndex is int led)
+        {
+            if (led < 0 || led >= LedCount)
+            {
+                throw new AulaException($"LED index {led} out of range 0-{LedCount - 1}.");
+            }
+
+            colors[led] = c.Color;
+        }
+        else
+        {
+            for (int i = 0; i < LedCount; i++)
+            {
+                colors[i] = c.Color;
+            }
+        }
+
+        var config = new LightingConfig(EffectId: 21, PerKeyColors: colors);
+        keyboard.Lighting.Apply(config);
+
+        string detail = c.KeyColors is { Count: > 0 } keys
+            ? string.Join(", ", keys.Select(kv => $"{kv.Key}={kv.Value.ToHex()}"))
+            : c.LedIndex is { } idx
+                ? $"LED {idx} = {c.Color.ToHex()}"
+                : $"{LedCount} LEDs = {c.Color.ToHex()}";
+        Console.WriteLine($"Applied per-key custom mode ({detail})");
         return 0;
     }
 
@@ -179,6 +246,12 @@ public static class Program
                      [--colorful]       rainbow/colorful mode
                      [--model ID]
               off [--model ID]       Turn lighting off
+              perkey                Set per-key colors (custom mode)
+                     [--color #RRGGBB]  fill base color (also: --color R G B)
+                     [--fill-all]       fill all LEDs with base color
+                     [--led N]          set single LED index
+                     KEY=#RRGGBB ...    set colors per key name (e.g. w=ff0000 space=00ff00)
+                     [--model ID]
               dump [--model ID]      Read and print current keyboard config
               help                   Show this help
 

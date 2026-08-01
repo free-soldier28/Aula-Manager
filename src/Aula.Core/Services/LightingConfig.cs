@@ -8,7 +8,8 @@ public sealed record LightingConfig(
     int? Speed = null,
     RgbColor? Color = null,
     bool Colorful = false,
-    byte? RawFlags = null)
+    byte? RawFlags = null,
+    IReadOnlyList<RgbColor>? PerKeyColors = null)
 {
     public static LightingConfig Off => new(EffectId: 0);
 }

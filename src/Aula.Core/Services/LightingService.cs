@@ -29,7 +29,7 @@ public sealed class LightingService : ILightingController
 
         var raw = _protocol.ReadConfigRaw();
 
-        raw[_model.CustomModeOffset] = 0x00;
+        raw[_model.CustomModeOffset] = config.PerKeyColors is not null ? (byte)0x01 : (byte)0x00;
         raw[_model.EffectIdOffset] = (byte)config.EffectId;
 
         int paramBase = _model.EffectParamsBase + _model.EffectParamsStride * config.EffectId;
@@ -56,7 +56,11 @@ public sealed class LightingService : ILightingController
 
         _protocol.WriteConfigRaw(raw);
 
-        if (config.Color is RgbColor color)
+        if (config.PerKeyColors is not null)
+        {
+            _protocol.WritePerKeyColors(config.PerKeyColors);
+        }
+        else if (config.Color is RgbColor color)
         {
             _protocol.WriteColorProfile(color);
         }

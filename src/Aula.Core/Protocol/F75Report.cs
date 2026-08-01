@@ -65,6 +65,27 @@ public static class F75Report
         return buffer;
     }
 
+    public static byte[] CreatePerKeyColors(ModelConfig model, IReadOnlyList<RgbColor> colors)
+    {
+        int ledCount = colors.Count;
+
+        var buffer = new byte[model.ReportLength];
+        buffer[0] = model.ReportId;
+        buffer[1] = CmdPerKey;
+        buffer[4] = 0x01;
+        buffer[6] = (byte)ledCount;
+        buffer[7] = 0x01;
+
+        for (int i = 0; i < ledCount; i++)
+        {
+            buffer[0x08 + i] = colors[i].R;
+            buffer[0x86 + i] = colors[i].G;
+            buffer[0x104 + i] = colors[i].B;
+        }
+
+        return buffer;
+    }
+
     public static byte[] CreateModelQuery(ModelConfig model)
     {
         var buffer = new byte[model.ReportLength];

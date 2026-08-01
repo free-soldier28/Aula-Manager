@@ -30,6 +30,13 @@ public sealed record OffCommand(string Model) : CliCommand;
 
 public sealed record DumpCommand(string Model) : CliCommand;
 
+public sealed record PerKeyCommand(
+    string Model,
+    RgbColor Color,
+    bool FillAll = false,
+    int? LedIndex = null,
+    IReadOnlyDictionary<string, RgbColor>? KeyColors = null) : CliCommand;
+
 public sealed record HelpCommand : CliCommand;
 
 public static class CliCommandParser
@@ -63,6 +70,9 @@ public static class CliCommandParser
 
             case "dump":
                 return new DumpCommand(GetModel(rest));
+
+            case "perkey":
+                return ParsePerKey(rest);
 
             case "off":
                 return new OffCommand(GetModel(rest));
@@ -139,6 +149,96 @@ public static class CliCommandParser
         }
 
         return "f75";
+    }
+
+    private static PerKeyCommand ParsePerKey(string[] args)
+    {
+        if (args.Length == 0)
+        {
+            throw new CliParseException("Usage: aula perkey [--color R G B | --color #RRGGBB] [--fill-all] [--model ID]");
+        }
+
+        RgbColor? color = null;
+        bool fillAll = false;
+        int? ledIndex = null;
+        string model = "f75";
+        var keyColors = new Dictionary<string, RgbColor>();
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            string arg = args[i];
+            string lowered = arg.ToLowerInvariant();
+            switch (lowered)
+            {
+                case "--color":
+                case "-c":
+                    color = ParseColor(args, ref i);
+                    break;
+                case "--fill-all":
+                    fillAll = true;
+                    break;
+                case "--led":
+                    ledIndex = ParseInt(args, ref i, arg);
+                    break;
+                case "--model":
+                case "-m":
+                    model = Next(args, ref i, arg);
+                    break;
+                default:
+                    if (TryParseKeyColor(arg, out string key, out RgbColor keyColor))
+                    {
+                        keyColors[key] = keyColor;
+                    }
+                    else
+                    {
+                        throw new CliParseException($"Unknown option '{arg}'.");
+                    }
+
+                    break;
+            }
+        }
+
+        if (keyColors.Count > 0)
+        {
+            return new PerKeyCommand(model, color ?? RgbColor.FromRgb(255, 255, 255), fillAll, ledIndex, keyColors);
+        }
+
+        return new PerKeyCommand(model, color ?? RgbColor.FromRgb(255, 255, 255), fillAll, ledIndex);
+    }
+
+    private static bool TryParseKeyColor(string arg, out string key, out RgbColor color)
+    {
+        int eq = arg.IndexOf('=');
+        if (eq <= 0 || eq == arg.Length - 1)
+        {
+            key = string.Empty;
+            color = default;
+            return false;
+        }
+
+        key = arg[..eq];
+        string hex = arg[(eq + 1)..];
+        if (hex.StartsWith('#'))
+        {
+            hex = hex[1..];
+        }
+
+        if (hex.Length == 6 && hex.All(Uri.IsHexDigit))
+        {
+            try
+            {
+                color = RgbColor.FromHex("#" + hex);
+                return true;
+            }
+            catch (FormatException)
+            {
+                // fall through to false
+            }
+        }
+
+        key = string.Empty;
+        color = default;
+        return false;
     }
 
     private static int ResolveEffectId(string effectRef)

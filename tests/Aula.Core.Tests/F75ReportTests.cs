@@ -63,6 +63,37 @@ public class F75ReportTests
         Assert.True(frame[7..].All(b => b == 0));
     }
 
+    [Fact]
+    public void CreatePerKeyColors_LaysOutPlanarRgbChannels()
+    {
+        var colors = new RgbColor[126];
+        colors[0] = new RgbColor(0xFF, 0x00, 0x00);
+        colors[14] = new RgbColor(0x00, 0x00, 0xFF);
+        for (int i = 0; i < colors.Length; i++)
+        {
+            if (i is not 0 and not 14)
+            {
+                colors[i] = new RgbColor(0x00, 0xFF, 0x00);
+            }
+        }
+
+        var frame = F75Report.CreatePerKeyColors(Model, colors);
+
+        Assert.Equal(520, frame.Length);
+        Assert.Equal(0x06, frame[0]);
+        Assert.Equal(0x06, frame[1]);
+        Assert.Equal(126, frame[6]);
+        Assert.Equal(0xFF, frame[0x08]);
+        Assert.Equal(0x00, frame[0x86]);
+        Assert.Equal(0x00, frame[0x104]);
+        Assert.Equal(0x00, frame[0x08 + 14]);
+        Assert.Equal(0x00, frame[0x86 + 14]);
+        Assert.Equal(0xFF, frame[0x104 + 14]);
+        Assert.Equal(0x00, frame[0x08 + 1]);
+        Assert.Equal(0xFF, frame[0x86 + 1]);
+        Assert.Equal(0x00, frame[0x104 + 1]);
+    }
+
     public static byte[] BuildConfigResponse()
     {
         var response = new byte[136];

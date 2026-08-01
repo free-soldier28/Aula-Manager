@@ -45,6 +45,11 @@ public sealed class SinowealthProtocol
         _transport.SetFeature(F75Report.CreateColorProfile(Model, color));
     }
 
+    public void WritePerKeyColors(IReadOnlyList<RgbColor> colors)
+    {
+        _transport.SetFeature(F75Report.CreatePerKeyColors(Model, colors));
+    }
+
     public byte[] ReadColorProfileRaw()
     {
         _transport.SetFeature(F75Report.CreateColorProfileRead(Model));

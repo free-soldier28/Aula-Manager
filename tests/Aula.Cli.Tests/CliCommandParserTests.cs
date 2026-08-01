@@ -93,6 +93,35 @@ public class CliCommandParserTests
         Assert.IsType<DumpCommand>(CliCommandParser.Parse(new[] { "dump" }));
     }
 
+    [Fact]
+    public void Parse_PerKey_ReadsColorAndModel()
+    {
+        var command = Assert.IsType<PerKeyCommand>(CliCommandParser.Parse(
+            new[] { "perkey", "--color", "#00FF00", "--model", "f87" }));
+
+        Assert.Equal(RgbColor.FromHex("#00FF00"), command.Color);
+        Assert.Equal("f87", command.Model);
+    }
+
+    [Fact]
+    public void Parse_PerKey_DefaultsToWhite()
+    {
+        var command = Assert.IsType<PerKeyCommand>(CliCommandParser.Parse(new[] { "perkey", "--fill-all" }));
+
+        Assert.Equal(RgbColor.FromRgb(255, 255, 255), command.Color);
+    }
+
+    [Fact]
+    public void Parse_PerKey_ReadsKeyColorPairs()
+    {
+        var command = Assert.IsType<PerKeyCommand>(CliCommandParser.Parse(
+            new[] { "perkey", "w=ff0000", "space=#00FF00" }));
+
+        Assert.Equal(2, command.KeyColors!.Count);
+        Assert.Equal(RgbColor.FromHex("#ff0000"), command.KeyColors["w"]);
+        Assert.Equal(RgbColor.FromHex("#00FF00"), command.KeyColors["space"]);
+    }
+
     public static TheoryData<string[]> InvalidInputs => new()
     {
         new[] { "effect", "wave", "--speed", "abc" },
