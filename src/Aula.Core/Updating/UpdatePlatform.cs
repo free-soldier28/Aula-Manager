@@ -67,12 +67,13 @@ public sealed record UpdatePlatform(
     {
         get
         {
-            if (OperatingSystem.IsWindows())
+            if (Os.StartsWith("win", StringComparison.OrdinalIgnoreCase))
             {
                 return new[] { "windows", "win" };
             }
 
-            if (OperatingSystem.IsMacOS())
+            if (Os.StartsWith("mac", StringComparison.OrdinalIgnoreCase) ||
+                Os.StartsWith("osx", StringComparison.OrdinalIgnoreCase))
             {
                 return new[] { "macos", "osx" };
             }

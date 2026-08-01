@@ -122,6 +122,27 @@ public class UpdateServiceTests
     }
 
     [Fact]
+    public void Platform_MatchesAsset_UsesExplicitOsNotHostOs()
+    {
+        var platform = new UpdatePlatform("windows", "x64", "win-x64");
+
+        Assert.True(platform.MatchesAsset("aula-app-win-x64.zip"));
+        Assert.True(platform.MatchesAsset("aula-app-WINDOWS-x64.zip"));
+        Assert.False(platform.MatchesAsset("aula-app-linux-x64.zip"));
+        Assert.False(platform.MatchesAsset("aula-app-osx-arm64.zip"));
+    }
+
+    [Fact]
+    public void Platform_Macos_MatchesOsxAndArm64()
+    {
+        var platform = new UpdatePlatform("macos", "arm64", "osx-arm64");
+
+        Assert.True(platform.MatchesAsset("aula-app-osx-arm64.zip"));
+        Assert.True(platform.MatchesAsset("aula-app-macos-arm64.zip"));
+        Assert.False(platform.MatchesAsset("aula-app-linux-x64.zip"));
+    }
+
+    [Fact]
     public async Task Download_ReturnsAssetBytes()
     {
         var handler = new StubHandler(
