@@ -1,0 +1,12 @@
+# AULA F75 / F87 (SinoWealth 258A:010C) — grant HID access to the active
+# local user without requiring root. `uaccess` tags the device for the
+# user logged into the local seat; systemd's uaccess handling is only
+# enabled for this device so unprivileged tools (CLI/GUI) can open it.
+#
+# Install:
+#   sudo cp 99-aula-keyboard.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger
+#
+# Then replug the keyboard (or re-login).
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="258a", ATTRS{idProduct}=="010c", TAG+="uaccess"

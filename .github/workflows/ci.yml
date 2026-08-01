@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore AulaManager.slnx
+
+      - name: Build
+        run: dotnet build AulaManager.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test AulaManager.slnx -c Release --no-build --logger "trx;LogFileName=results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore
+
+  publish:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish CLI
+        run: |
+          if ("${{ matrix.os }}" -eq "windows-latest") {
+            dotnet publish src/Aula.Cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/cli-win-x64
+          } else {
+            dotnet publish src/Aula.Cli -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/cli-linux-x64
+          }
+        shell: pwsh
+
+      - name: Publish App
+        run: |
+          if ("${{ matrix.os }}" -eq "windows-latest") {
+            dotnet publish src/Aula.App -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/app-win-x64
+          } else {
+            dotnet publish src/Aula.App -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/app-linux-x64
+          }
+        shell: pwsh
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aula-cli-${{ matrix.os }}
+          path: artifacts/cli-*
+          if-no-files-found: ignore
+
+      - name: Upload App artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aula-app-${{ matrix.os }}
+          path: artifacts/app-*
+          if-no-files-found: ignore
+
+      - name: Upload udev rule
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aula-udev-rule
+          path: packaging/linux/99-aula-keyboard.rules
+          if-no-files-found: ignore

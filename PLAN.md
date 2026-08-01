@@ -129,11 +129,12 @@ AulaManager.slnx
 - [x] Общая сессия устройства (`KeyboardSession`): повторное открытие + refresh после hotplug
 - [x] **Критерий приёмки:** GUI собирается и запускается на Windows (реальная F75 — проверка вкладок на железе)
 
-### Этап 9. Упаковка и CI
-- GitHub Actions matrix: `windows-latest`, `ubuntu-latest`.
-- `dotnet publish` self-contained single-file под win-x64 и linux-x64.
-- udev-правило для Linux (установка через `uaccess`, без постоянного root).
-- **Критерий приёмки:** собранные бинарники запускаются на чистой машине.
+### Этап 9. Упаковка и CI ✅
+- [x] `packaging/publish.ps1`: `dotnet publish` self-contained single-file (win-x64 + linux-x64, CLI + App)
+- [x] Проверено на Windows: single-file `Aula.Cli.exe` (67 MB) и `Aula.App.exe` (77 MB) собираются и запускаются
+- [x] `packaging/linux/99-aula-keyboard.rules`: udev-правило VID `258A:010C` через `TAG+="uaccess"` (без root)
+- [x] `.github/workflows/ci.yml`: matrix `windows-latest`/`ubuntu-latest` — build + test + publish + артефакты (CLI/App/udev)
+- [ ] **Критерий приёмки:** собранные бинарники запускаются на чистой машине (проверка на Windows частично — локально)
 
 ### Этап 10. Полевые испытания на F75 🔄
 - [x] Сквозной сценарий: прочитать → изменить → перезагрузить → проверить сохранение (подтверждено, конфиг и цвет сохраняются в flash)
