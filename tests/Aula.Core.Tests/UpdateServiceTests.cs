@@ -143,6 +143,17 @@ public class UpdateServiceTests
     }
 
     [Fact]
+    public async Task Check_ApiError_ThrowsInsteadOfReportingUpToDate()
+    {
+        var handler = new StubHandler("", HttpStatusCode.Forbidden);
+        var service = new UpdateService(
+            new HttpClient(handler),
+            currentVersion: "0.9.0");
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => service.CheckAsync());
+    }
+
+    [Fact]
     public async Task Download_ReturnsAssetBytes()
     {
         var handler = new StubHandler(

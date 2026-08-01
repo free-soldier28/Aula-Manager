@@ -46,15 +46,7 @@ public sealed class UpdateService
 
     public async Task<UpdateInfo> CheckAsync(CancellationToken ct = default)
     {
-        GitHubRelease? release;
-        try
-        {
-            release = await GetLatestReleaseAsync(ct).ConfigureAwait(false);
-        }
-        catch (HttpRequestException)
-        {
-            return UpdateInfo.None(_currentVersion);
-        }
+        GitHubRelease? release = await GetLatestReleaseAsync(ct).ConfigureAwait(false);
 
         if (release is null || release.Prerelease)
         {
