@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Aula.Cli/Aula.Cli.csproj" />
+    <Project Path="src/Aula.App/Aula.App.csproj" />
     <Project Path="src/Aula.Core/Aula.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">

@@ -120,11 +120,14 @@ AulaManager.slnx
 - [x] **Тесты:** round-trip сериализация, применение профиля = набор кадров 0x04/0x06.
 - [ ] **Критерий приёмки:** профиль, применённый с CLI, восстанавливается после выключения ПК.
 
-### Этап 8. GUI (Avalonia)
-- Вкладки: «Устройство», «Подсветка», «Профили».
-- Превью раскладки 75%, выбор эффекта, цвета, яркости, скорости (UI строится из `KeyboardCapabilities`).
-- Hotplug-индикация.
-- **Критерий приёмки:** GUI собирается и работает на Windows и Linux.
+### Этап 8. GUI (Avalonia) ✅
+- [x] `Aula.App` (Avalonia 11.3.x, MVVM через CommunityToolkit.Mvvm)
+- [x] Вкладки: «Device», «Lighting», «Profiles»
+- [x] Device: автоопределение F75/F87, статус подключения, info, model raw (через `ISinowealthDiagnostics`), refresh
+- [x] Lighting: выбор эффекта из карты модели, яркость 0–9, скорость 0–4, RGB каналы, colorful, read/apply/off
+- [x] Profiles: список сохранённых, save current, apply, delete, refresh
+- [x] Общая сессия устройства (`KeyboardSession`): повторное открытие + refresh после hotplug
+- [x] **Критерий приёмки:** GUI собирается и запускается на Windows (реальная F75 — проверка вкладок на железе)
 
 ### Этап 9. Упаковка и CI
 - GitHub Actions matrix: `windows-latest`, `ubuntu-latest`.

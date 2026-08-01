@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aula.App.ViewModels"
+             xmlns:models="using:Aula.Core.Models"
+             x:Class="Aula.App.Views.LightingView"
+             x:DataType="vm:LightingViewModel"
+             Padding="16">
+
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0 12 0 0">
+            <Button Content="Read" Command="{Binding ReadCommand}" />
+            <Button Content="Apply" Command="{Binding ApplyCommand}" Classes="accent" />
+            <Button Content="Off" Command="{Binding TurnOffCommand}" />
+            <TextBlock Text="{Binding Message}" VerticalAlignment="Center" Foreground="Gray" Margin="8 0 0 0" />
+        </StackPanel>
+
+        <Grid ColumnDefinitions="260,24,2*,*" RowDefinitions="*">
+            <StackPanel Grid.Column="0" Spacing="8">
+                <TextBlock Text="Effect" FontWeight="SemiBold" />
+                <ComboBox ItemsSource="{Binding EffectItems}"
+                          SelectedItem="{Binding SelectedEffect}" />
+
+                <TextBlock Text="Brightness" FontWeight="SemiBold" IsVisible="{Binding HasBrightness}" />
+                <Slider Minimum="0" Maximum="9" TickFrequency="1" Value="{Binding Brightness}"
+                        IsVisible="{Binding HasBrightness}" />
+
+                <TextBlock Text="Speed" FontWeight="SemiBold" IsVisible="{Binding HasSpeed}" />
+                <Slider Minimum="0" Maximum="4" TickFrequency="1" Value="{Binding Speed}"
+                        IsVisible="{Binding HasSpeed}" />
+
+                <CheckBox Content="Colorful" IsChecked="{Binding IsColorful}"
+                          IsVisible="{Binding HasColor}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Margin="16 0 0 0" Spacing="8"
+                        IsVisible="{Binding HasColor}">
+                <TextBlock Text="Color" FontWeight="SemiBold" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="R" />
+                    <NumericUpDown Minimum="0" Maximum="255" Value="{Binding Red}" Width="64" />
+                    <TextBlock Text="G" />
+                    <NumericUpDown Minimum="0" Maximum="255" Value="{Binding Green}" Width="64" />
+                    <TextBlock Text="B" />
+                    <NumericUpDown Minimum="0" Maximum="255" Value="{Binding Blue}" Width="64" />
+                </StackPanel>
+                <Border Width="64" Height="64" CornerRadius="8" HorizontalAlignment="Left">
+                    <TextBlock Text="{Binding ColorHex}" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>            </StackPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

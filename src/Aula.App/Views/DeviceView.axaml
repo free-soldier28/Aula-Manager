@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aula.App.ViewModels"
+             x:Class="Aula.App.Views.DeviceView"
+             x:DataType="vm:DeviceViewModel"
+             Padding="16">
+
+    <StackPanel Spacing="8" MaxWidth="520" HorizontalAlignment="Left">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="{Binding Status}" FontSize="14" VerticalAlignment="Center" />
+            <Button Content="Refresh" Command="{Binding RefreshCommand}" />
+        </StackPanel>
+
+        <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Device" FontWeight="SemiBold" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DeviceName}" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="VID:PID" FontWeight="SemiBold" Margin="0 4 0 0" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding VidPid}" Margin="0 4 0 0" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Serial" FontWeight="SemiBold" Margin="0 4 0 0" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Serial}" Margin="0 4 0 0" />
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="Model" FontWeight="SemiBold" Margin="0 4 0 0" />
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding ModelId}" Margin="0 4 0 0" />
+
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="Model raw" FontWeight="SemiBold" Margin="0 4 0 0" />
+            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding ModelRaw}" FontFamily="Cascadia Mono, Consolas" Margin="0 4 0 0" />
+        </Grid>
+    </StackPanel>
+</UserControl>
