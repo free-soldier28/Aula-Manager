@@ -1,10 +1,9 @@
 ﻿using Aula.Cli;
 using Aula.Core;
+using Aula.Core.Abstractions;
 using Aula.Core.Devices;
 using Aula.Core.Models;
-using Aula.Core.Protocol;
 using Aula.Core.Services;
-using HidSharp;
 
 namespace Aula.Cli;
 
@@ -66,14 +65,19 @@ public static class Program
 
     private static int RunInfo(InfoCommand c)
     {
-        using var session = OpenSession(c.Model);
-        byte[] model = session.Protocol.QueryModel();
+        using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
 
-        Console.WriteLine($"Device      : {session.Transport.Info.DisplayName}");
-        Console.WriteLine($"VID:PID     : {session.Transport.Info.VendorId:X4}:{session.Transport.Info.ProductId:X4}");
-        Console.WriteLine($"Serial      : {session.Transport.Info.SerialNumber ?? "-"}");
-        Console.WriteLine($"Model       : 0x{model[8]:X2}  (psd {model[12]:X2}:{model[13]:X2})");
-        Console.WriteLine($"Model raw   : {Convert.ToHexString(model)}");
+        Console.WriteLine($"Device      : {keyboard.Info.DisplayName}");
+        Console.WriteLine($"VID:PID     : {keyboard.Info.VendorId:X4}:{keyboard.Info.ProductId:X4}");
+        Console.WriteLine($"Serial      : {keyboard.Info.SerialNumber ?? "-"}");
+
+        if (keyboard is ISinowealthDiagnostics diagnostics)
+        {
+            byte[] model = diagnostics.QueryModel();
+            Console.WriteLine($"Model       : 0x{model[8]:X2}  (psd {model[12]:X2}:{model[13]:X2})");
+            Console.WriteLine($"Model raw   : {Convert.ToHexString(model)}");
+        }
+
         return 0;
     }
 
@@ -91,11 +95,10 @@ public static class Program
 
     private static int RunEffect(EffectCommand c)
     {
-        using var session = OpenSession(c.Model);
-        var lighting = new LightingService(session.Protocol);
+        using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
         var config = new LightingConfig(c.EffectId, c.Brightness, c.Speed, c.Color, c.Colorful);
 
-        lighting.Apply(config);
+        keyboard.Lighting.Apply(config);
 
         string colorText = c.Color is { } color ? color.ToHex() : c.Colorful ? "colorful" : "-";
         Console.WriteLine($"Applied effect '{config.EffectId}' brightness={config.Brightness?.ToString() ?? "-"} " +
@@ -105,9 +108,8 @@ public static class Program
 
     private static int RunDump(DumpCommand c)
     {
-        using var session = OpenSession(c.Model);
-        var lighting = new LightingService(session.Protocol);
-        KeyboardConfig config = lighting.ReadConfig();
+        using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
+        KeyboardConfig config = keyboard.Lighting.ReadConfig();
 
         Console.WriteLine($"Effect      : {config.EffectId}");
         Console.WriteLine($"Custom mode : {config.CustomMode}");
@@ -126,27 +128,8 @@ public static class Program
         return 0;
     }
 
-    private static Session OpenSession(string modelId)
-    {
-        var model = ModelConfig.Resolve(modelId);
-        var scanner = new HidDeviceScanner();
-        var devices = scanner.Scan(model.VendorId, model.ProductId);
-        DeviceInfo? picked = DevicePicker.PickBest(devices) ?? DevicePicker.PickBest(scanner.ScanAll());
-
-        if (picked is null)
-        {
-            throw new AulaDeviceNotFoundException();
-        }
-
-        HidDevice device = DeviceList.Local.GetHidDevices()
-            .FirstOrDefault(d => d.DevicePath == picked.DevicePath)
-            ?? throw new AulaDeviceNotFoundException();
-
-        var transport = new HidSharpTransport(device);
-        transport.Open();
-
-        return new Session(transport, new SinowealthProtocol(transport, model));
-    }
+    private static IAulaKeyboard OpenKeyboard(string modelId) =>
+        new KeyboardDeviceFactory().Open(modelId);
 
     private static string FormatHex(byte[] bytes)
     {
@@ -193,20 +176,5 @@ public static class Program
             Models: f75 (default), f87
             """);
         return 0;
-    }
-
-    private sealed class Session : IDisposable
-    {
-        public Session(IHidTransport transport, SinowealthProtocol protocol)
-        {
-            Transport = transport;
-            Protocol = protocol;
-        }
-
-        public IHidTransport Transport { get; }
-
-        public SinowealthProtocol Protocol { get; }
-
-        public void Dispose() => Transport.Dispose();
     }
 }
