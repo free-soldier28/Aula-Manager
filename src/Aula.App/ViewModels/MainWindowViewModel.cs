@@ -17,6 +17,7 @@ public partial class MainWindowViewModel : ObservableObject
         Lighting = new LightingViewModel(_session);
         Profiles = new ProfilesViewModel(_session);
         _session.Changed += OnSessionChanged;
+        _session.Open();
     }
 
     [ObservableProperty]

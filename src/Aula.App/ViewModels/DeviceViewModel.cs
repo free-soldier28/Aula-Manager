@@ -52,16 +52,16 @@ public partial class DeviceViewModel : ObservableObject
 
         if (keyboard is null)
         {
-            Status = "No AULA keyboard detected.";
+            Status = _session.Error ?? "No AULA keyboard detected.";
             DeviceName = VidPid = Serial = ModelId = ModelRaw = "-";
             return;
         }
 
         DeviceInfo info = keyboard.Info;
         Status = "Connected";
-        DeviceName = info.DisplayName ?? "-";
+        DeviceName = string.IsNullOrWhiteSpace(info.DisplayName) ? "n/a" : info.DisplayName;
         VidPid = $"{info.VendorId:X4}:{info.ProductId:X4}";
-        Serial = info.SerialNumber ?? "-";
+        Serial = string.IsNullOrWhiteSpace(info.SerialNumber) ? "n/a" : info.SerialNumber;
         ModelId = keyboard.Model.Id;
 
         ModelRaw = keyboard is ISinowealthDiagnostics d

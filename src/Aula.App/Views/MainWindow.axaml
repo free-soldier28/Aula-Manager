@@ -17,13 +17,13 @@
 
     <TabControl SelectedIndex="{Binding SelectedTab}">
         <TabItem Header="Device">
-            <views:DeviceView />
+            <views:DeviceView DataContext="{Binding Device}" />
         </TabItem>
         <TabItem Header="Lighting">
-            <views:LightingView />
+            <views:LightingView DataContext="{Binding Lighting}" />
         </TabItem>
         <TabItem Header="Profiles">
-            <views:ProfilesView />
+            <views:ProfilesView DataContext="{Binding Profiles}" />
         </TabItem>
     </TabControl>
 </Window>

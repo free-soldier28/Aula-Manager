@@ -16,8 +16,11 @@ public sealed class KeyboardSession : IDisposable
 
     public bool IsConnected => _keyboard is not null;
 
+    public string? Error { get; private set; }
+
     public void Open(string? modelId = null)
     {
+        Error = null;
         if (_keyboard is not null)
         {
             if (_keyboard.Model.Id == (modelId ?? _keyboard.Model.Id))
@@ -32,10 +35,15 @@ public sealed class KeyboardSession : IDisposable
         try
         {
             _keyboard = _factory.TryOpen(modelId);
+            if (_keyboard is null)
+            {
+                Error = "TryOpen returned null (no device found).";
+            }
         }
-        catch (AulaException)
+        catch (Exception ex)
         {
             _keyboard = null;
+            Error = ex.GetType().Name + ": " + ex.Message;
         }
 
         Changed?.Invoke();
