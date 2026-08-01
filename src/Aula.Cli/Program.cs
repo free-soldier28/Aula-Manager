@@ -173,7 +173,7 @@ public static class Program
               info [--model ID]      Show device info and model bytes
               effects [--model ID]   List supported lighting effects
               effect <name|id>       Apply a lighting effect
-                     [--brightness N]   0-4
+                     [--brightness N]   0-9
                      [--speed N]        0-4
                      [--color #RRGGBB]  single color (also: --color R G B)
                      [--colorful]       rainbow/colorful mode

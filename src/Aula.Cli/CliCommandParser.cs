@@ -171,7 +171,8 @@ public static class CliCommandParser
     private static byte ParseByte(string[] args, ref int i, string flag)
     {
         string value = Next(args, ref i, flag);
-        if (!byte.TryParse(value, System.Globalization.NumberStyles.HexNumber, null, out byte result))
+        string hex = value.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? value[2..] : value;
+        if (!byte.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out byte result))
         {
             throw new CliParseException($"Invalid byte '{value}' for {flag}. Use hex, e.g. 0x20.");
         }

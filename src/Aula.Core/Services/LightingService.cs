@@ -6,7 +6,7 @@ namespace Aula.Core.Services;
 
 public sealed class LightingService : ILightingController
 {
-    private const int MaxBrightness = 4;
+    private const int MaxBrightness = 9;
     private const int MaxSpeed = 4;
     private const byte ColorfulFlag = 0x07;
     private const byte SingleColorFlag = 0x00;

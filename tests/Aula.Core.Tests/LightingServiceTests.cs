@@ -63,7 +63,7 @@ public class LightingServiceTests
         service.Apply(new LightingConfig(EffectId: 3, Brightness: 99, Speed: -3));
 
         byte[] sent = transport.LastSent();
-        Assert.Equal(0x04, sent[64 + 2 * 3]);
+        Assert.Equal(0x09, sent[64 + 2 * 3]);
         Assert.Equal(0x00, sent[64 + 2 * 3 + 1] >> 4);
     }
 
