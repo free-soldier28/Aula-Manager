@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: osx-arm64
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore AulaManager.slnx
+
+      - name: Test
+        run: dotnet test AulaManager.slnx -c Release --no-restore
+
+      - name: Publish CLI (${{ matrix.rid }})
+        shell: pwsh
+        run: |
+          dotnet publish src/Aula.Cli -c Release -r ${{ matrix.rid }} --self-contained true `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o artifacts/cli
+
+      - name: Publish App (${{ matrix.rid }})
+        shell: pwsh
+        run: |
+          dotnet publish src/Aula.App -c Release -r ${{ matrix.rid }} --self-contained true `
+            -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o artifacts/app
+
+      - name: Package CLI
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/cli/* -DestinationPath aula-cli-${{ matrix.rid }}.zip
+
+      - name: Package App
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/app/* -DestinationPath aula-app-${{ matrix.rid }}.zip
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-${{ matrix.rid }}
+          path: aula-cli-${{ matrix.rid }}.zip
+
+      - name: Upload App artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.rid }}
+          path: aula-app-${{ matrix.rid }}.zip
+
+      - name: Upload udev rule
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: udev-rule
+          path: packaging/linux/99-aula-keyboard.rules
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: AulaManager ${{ github.ref_name }}
+          body: "AulaManager ${{ github.ref_name }} — see PLAN.md and docs/PROTOCOL.md for details."
+          files: dist/*
+          fail_on_unmatched_files: false

@@ -4,6 +4,7 @@ using Aula.Core.Abstractions;
 using Aula.Core.Devices;
 using Aula.Core.Models;
 using Aula.Core.Services;
+using Aula.Core.Updating;
 
 namespace Aula.Cli;
 
@@ -43,6 +44,7 @@ public static class Program
         OffCommand c => RunEffect(new EffectCommand(c.Model, 0, null, null, null, false)),
         PerKeyCommand c => RunPerKey(c),
         ProfileCommand c => RunProfile(c),
+        UpdateCommand c => RunUpdate(c).GetAwaiter().GetResult(),
         DumpCommand c => RunDump(c),
         _ => 0,
     };
@@ -217,6 +219,81 @@ public static class Program
         }
     }
 
+    private static async Task<int> RunUpdate(UpdateCommand c)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var service = new UpdateService();
+
+        try
+        {
+            UpdateInfo info = await service.CheckAsync(cts.Token);
+
+            switch (c.Action)
+            {
+                case "check":
+                    return PrintUpdateCheck(info);
+
+                case "install":
+                    if (!info.IsAvailable)
+                    {
+                        Console.WriteLine("You are up to date.");
+                        return 0;
+                    }
+
+                    if (!c.Force)
+                    {
+                        Console.WriteLine(
+                            $"New version {info.LatestVersion} available (current {info.CurrentVersion}). " +
+                            "Run 'aula update install --force' to install.");
+                        return 0;
+                    }
+
+                    Console.WriteLine($"Downloading {info.AssetName} ({info.LatestVersion})…");
+                    var installer = new UpdateInstaller();
+                    string zip = await service.DownloadToFileAsync(info, installer.StagingDirectory, cts.Token);
+                    await installer.InstallAsync(zip, cts.Token);
+                    Console.WriteLine("Update staged. Restarting to apply…");
+                    return 0;
+
+                default:
+                    throw new AulaException($"Unsupported update action '{c.Action}'.");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Console.Error.WriteLine("error: update check timed out (no network?).");
+            return 1;
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.Error.WriteLine($"error: cannot reach GitHub: {ex.Message}");
+            return 1;
+        }
+        catch (AulaException ex)
+        {
+            Console.Error.WriteLine($"error: {ex.Message}");
+            return 1;
+        }
+    }
+
+    private static int PrintUpdateCheck(UpdateInfo info)
+    {
+        if (!info.IsAvailable)
+        {
+            Console.WriteLine($"AulaManager {info.CurrentVersion} is up to date.");
+            return 0;
+        }
+
+        Console.WriteLine($"Version       : {info.CurrentVersion}");
+        Console.WriteLine($"Latest        : {info.LatestVersion}");
+        Console.WriteLine($"Published     : {info.PublishedAt?.LocalDateTime.ToString("yyyy-MM-dd HH:mm") ?? "-"}");
+        Console.WriteLine($"Download      : {info.DownloadUrl}");
+        Console.WriteLine();
+        Console.WriteLine("Release notes:");
+        Console.WriteLine(info.ReleaseNotes);
+        return 0;
+    }
+
     private static int RunDump(DumpCommand c)
     {
         using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
@@ -308,6 +385,9 @@ public static class Program
                      [--model ID]
               profile load <name>    Alias for apply
               profile delete <name>  Delete a saved profile
+              update check           Check GitHub for a new version
+              update install         Download and install the new version
+                     [--force]       apply immediately (skips confirmation)
               help                   Show this help
 
             Models: f75 (default), f87

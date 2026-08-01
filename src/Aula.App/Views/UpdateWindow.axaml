@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Aula.App.ViewModels"
+        x:Class="Aula.App.Views.UpdateWindow"
+        x:DataType="vm:UpdateViewModel"
+        Title="Update available"
+        Width="520"
+        Height="380"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <Border Padding="16">
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Content="Later" IsCancel="True" />
+                <Button Content="Install &amp; restart" Command="{Binding InstallCommand}" Classes="accent"
+                        IsVisible="{Binding HasUpdate}" IsEnabled="{Binding !IsInstalling}" />
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="AulaManager update available" FontSize="16" FontWeight="Bold" />
+                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" />
+                <Separator Margin="0 8" />
+                <TextBlock Text="Release notes:" FontWeight="SemiBold" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <TextBlock Text="{Binding ReleaseNotes}" TextWrapping="Wrap" FontSize="12" />
+                </ScrollViewer>
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</Window>

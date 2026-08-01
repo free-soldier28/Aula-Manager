@@ -15,15 +15,24 @@
         <vm:MainWindowViewModel />
     </Design.DataContext>
 
-    <TabControl SelectedIndex="{Binding SelectedTab}">
-        <TabItem Header="Device">
-            <views:DeviceView DataContext="{Binding Device}" />
-        </TabItem>
-        <TabItem Header="Lighting">
-            <views:LightingView DataContext="{Binding Lighting}" />
-        </TabItem>
-        <TabItem Header="Profiles">
-            <views:ProfilesView DataContext="{Binding Profiles}" />
-        </TabItem>
-    </TabControl>
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Padding="12 6">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Text="AulaManager" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Update.Status}" VerticalAlignment="Center" Foreground="Gray" />
+                <Button Content="Check updates" Command="{Binding Update.CheckCommand}" VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+        <TabControl SelectedIndex="{Binding SelectedTab}">
+            <TabItem Header="Device">
+                <views:DeviceView DataContext="{Binding Device}" />
+            </TabItem>
+            <TabItem Header="Lighting">
+                <views:LightingView DataContext="{Binding Lighting}" />
+            </TabItem>
+            <TabItem Header="Profiles">
+                <views:ProfilesView DataContext="{Binding Profiles}" />
+            </TabItem>
+        </TabControl>
+    </DockPanel>
 </Window>

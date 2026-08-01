@@ -153,6 +153,24 @@ public class CliCommandParserTests
         Assert.Throws<CliParseException>(() => CliCommandParser.Parse(new[] { "profile", "export", "x" }));
     }
 
+    [Fact]
+    public void Parse_Update_ReadsAction()
+    {
+        var command = Assert.IsType<UpdateCommand>(CliCommandParser.Parse(new[] { "update", "check" }));
+        Assert.Equal("check", command.Action);
+
+        var install = Assert.IsType<UpdateCommand>(CliCommandParser.Parse(new[] { "update", "install", "--force" }));
+        Assert.Equal("install", install.Action);
+        Assert.True(install.Force);
+    }
+
+    [Fact]
+    public void Parse_Update_RequiresAction()
+    {
+        Assert.Throws<CliParseException>(() => CliCommandParser.Parse(new[] { "update" }));
+        Assert.Throws<CliParseException>(() => CliCommandParser.Parse(new[] { "update", "bogus" }));
+    }
+
     public static TheoryData<string[]> InvalidInputs => new()
     {
         new[] { "effect", "wave", "--speed", "abc" },

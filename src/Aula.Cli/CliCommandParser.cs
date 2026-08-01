@@ -45,6 +45,8 @@ public sealed record ProfileCommand(
     bool Colorful = false,
     IReadOnlyDictionary<string, RgbColor>? KeyColors = null) : CliCommand;
 
+public sealed record UpdateCommand(string Action, bool Force = false) : CliCommand;
+
 public sealed record HelpCommand : CliCommand;
 
 public static class CliCommandParser
@@ -84,6 +86,9 @@ public static class CliCommandParser
 
             case "profile":
                 return ParseProfile(rest);
+
+            case "update":
+                return ParseUpdate(rest);
 
             case "off":
                 return new OffCommand(GetModel(rest));
@@ -224,6 +229,23 @@ public static class CliCommandParser
         }
 
         return new ProfileCommand(action, name, model, color, colorful, keyColors);
+    }
+
+    private static UpdateCommand ParseUpdate(string[] args)
+    {
+        if (args.Length == 0)
+        {
+            throw new CliParseException("Usage: aula update <check|install> [--force]");
+        }
+
+        string action = args[0].ToLowerInvariant();
+        if (action is not ("check" or "install"))
+        {
+            throw new CliParseException($"Unknown update action '{action}'. Use check or install.");
+        }
+
+        bool force = args.Contains("--force", StringComparer.OrdinalIgnoreCase);
+        return new UpdateCommand(action, force);
     }
 
     private static PerKeyCommand ParsePerKey(string[] args)

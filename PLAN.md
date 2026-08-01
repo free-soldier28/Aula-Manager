@@ -142,6 +142,15 @@ AulaManager.slnx
 - [x] Per-key custom mode (эффект 21) — команда `0x06` (planar RGB), F75Layout (88 клавиш), CLI `perkey key=color`; сохраняется в flash (см. `docs/PROTOCOL.md`)
 - [ ] **Критерий приёмки:** все фичи этапов 4–7 стабильны на железе
 
+### Этап 12. Автообновление ✅
+- [x] Общая версия приложения (`Directory.Build.props` `<Version>`, `ProductInfo`)
+- [x] `UpdateService`: проверка через GitHub API `releases/latest`, выбор ассета под ОС/арх (win/linux/mac), ignore prerelease
+- [x] `UpdateInstaller`: скачивание в staging + хелпер-скрипт (cmd/sh) — ждёт выхода процесса, заменяет файлы, перезапускает
+- [x] CLI: `aula update check`, `aula update install [--force]`
+- [x] GUI: проверка при запуске, статус-бар, диалог обновления с release notes и кнопкой «Install & restart»
+- [x] `.github/workflows/release.yml`: триггер по тегу `v*`, сборка win-x64 / linux-x64 / osx-arm64, zip-ассеты, GitHub Release
+- [x] **Тесты:** парсинг release, выбор ассета, prerelease, no-asset, not-found, download (Core 78, CLI 29)
+
 ### Этап 11. Другие модели и macOS (план)
 - Сонэкс-клавиатуры AULA (F99/F108 и др.): новый `IKeyboardDriver` поверх того же каркаса.
 - macOS: перенос транспорта (HID через IOKit/HidSharp уже кросс-платформенен), права Input Monitoring.
