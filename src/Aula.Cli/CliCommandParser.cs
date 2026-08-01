@@ -37,6 +37,14 @@ public sealed record PerKeyCommand(
     int? LedIndex = null,
     IReadOnlyDictionary<string, RgbColor>? KeyColors = null) : CliCommand;
 
+public sealed record ProfileCommand(
+    string Action,
+    string? Name = null,
+    string Model = "f75",
+    RgbColor? Color = null,
+    bool Colorful = false,
+    IReadOnlyDictionary<string, RgbColor>? KeyColors = null) : CliCommand;
+
 public sealed record HelpCommand : CliCommand;
 
 public static class CliCommandParser
@@ -73,6 +81,9 @@ public static class CliCommandParser
 
             case "perkey":
                 return ParsePerKey(rest);
+
+            case "profile":
+                return ParseProfile(rest);
 
             case "off":
                 return new OffCommand(GetModel(rest));
@@ -149,6 +160,70 @@ public static class CliCommandParser
         }
 
         return "f75";
+    }
+
+    private static ProfileCommand ParseProfile(string[] args)
+    {
+        if (args.Length == 0)
+        {
+            throw new CliParseException("Usage: aula profile <save|load|apply|list|delete> <name> [options]");
+        }
+
+        string action = args[0].ToLowerInvariant();
+        if (action is not ("save" or "load" or "apply" or "list" or "delete"))
+        {
+            throw new CliParseException(
+                $"Unknown profile action '{action}'. Use save, load, apply, list or delete.");
+        }
+
+        string? name = null;
+        string model = "f75";
+        RgbColor? color = null;
+        bool colorful = false;
+        var keyColors = new Dictionary<string, RgbColor>();
+
+        string[] rest = args[1..];
+        for (int i = 0; i < rest.Length; i++)
+        {
+            string arg = rest[i];
+            string lowered = arg.ToLowerInvariant();
+            switch (lowered)
+            {
+                case "--model":
+                case "-m":
+                    model = Next(rest, ref i, arg);
+                    break;
+                case "--color":
+                case "-c":
+                    color = ParseColor(rest, ref i);
+                    break;
+                case "--colorful":
+                    colorful = true;
+                    break;
+                default:
+                    if (name is null && !lowered.StartsWith('-'))
+                    {
+                        name = arg;
+                    }
+                    else if (TryParseKeyColor(arg, out string key, out RgbColor keyColor))
+                    {
+                        keyColors[key] = keyColor;
+                    }
+                    else
+                    {
+                        throw new CliParseException($"Unknown option '{arg}'.");
+                    }
+
+                    break;
+            }
+        }
+
+        if (action is "save" or "load" or "apply" or "delete" && name is null)
+        {
+            throw new CliParseException($"Usage: aula profile {action} <name> [options]");
+        }
+
+        return new ProfileCommand(action, name, model, color, colorful, keyColors);
     }
 
     private static PerKeyCommand ParsePerKey(string[] args)

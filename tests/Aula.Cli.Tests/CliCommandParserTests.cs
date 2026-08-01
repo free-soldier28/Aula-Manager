@@ -122,6 +122,37 @@ public class CliCommandParserTests
         Assert.Equal(RgbColor.FromHex("#00FF00"), command.KeyColors["space"]);
     }
 
+    [Fact]
+    public void Parse_Profile_ReadsActionAndName()
+    {
+        var command = Assert.IsType<ProfileCommand>(CliCommandParser.Parse(
+            new[] { "profile", "save", "gaming", "--model", "f87" }));
+
+        Assert.Equal("save", command.Action);
+        Assert.Equal("gaming", command.Name);
+        Assert.Equal("f87", command.Model);
+    }
+
+    [Fact]
+    public void Parse_Profile_ApplyRequiresName()
+    {
+        Assert.Throws<CliParseException>(() => CliCommandParser.Parse(new[] { "profile", "apply" }));
+    }
+
+    [Fact]
+    public void Parse_Profile_ListNeedsNoName()
+    {
+        var command = Assert.IsType<ProfileCommand>(CliCommandParser.Parse(new[] { "profile", "list" }));
+        Assert.Equal("list", command.Action);
+        Assert.Null(command.Name);
+    }
+
+    [Fact]
+    public void Parse_Profile_UnknownAction_Throws()
+    {
+        Assert.Throws<CliParseException>(() => CliCommandParser.Parse(new[] { "profile", "export", "x" }));
+    }
+
     public static TheoryData<string[]> InvalidInputs => new()
     {
         new[] { "effect", "wave", "--speed", "abc" },

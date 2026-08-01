@@ -42,6 +42,7 @@ public static class Program
         EffectCommand c => RunEffect(c),
         OffCommand c => RunEffect(new EffectCommand(c.Model, 0, null, null, null, false)),
         PerKeyCommand c => RunPerKey(c),
+        ProfileCommand c => RunProfile(c),
         DumpCommand c => RunDump(c),
         _ => 0,
     };
@@ -174,6 +175,48 @@ public static class Program
         return 0;
     }
 
+    private static int RunProfile(ProfileCommand c)
+    {
+        var profiles = new ProfileService();
+
+        switch (c.Action)
+        {
+            case "list":
+                foreach (string name in profiles.List())
+                {
+                    Console.WriteLine(name);
+                }
+
+                return 0;
+
+            case "save":
+            {
+                using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
+                var profile = KeyboardProfile.FromCurrent(c.Name!, keyboard);
+                profiles.Save(c.Name!, profile);
+                Console.WriteLine($"Saved profile '{c.Name}' (effect {profile.Lighting.EffectId}).");
+                return 0;
+            }
+
+            case "delete":
+                return profiles.Delete(c.Name!)
+                    ? Print($"Deleted profile '{c.Name}'.")
+                    : Print($"Profile '{c.Name}' not found.", error: true);
+
+            case "apply":
+            case "load":
+            {
+                using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
+                profiles.Apply(c.Name!, keyboard);
+                Console.WriteLine($"Applied profile '{c.Name}'.");
+                return 0;
+            }
+
+            default:
+                throw new AulaException($"Unsupported profile action '{c.Action}'.");
+        }
+    }
+
     private static int RunDump(DumpCommand c)
     {
         using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
@@ -206,6 +249,12 @@ public static class Program
 
     private static IAulaKeyboard OpenKeyboard(string modelId) =>
         new KeyboardDeviceFactory().Open(modelId);
+
+    private static int Print(string message, bool error = false)
+    {
+        Console.WriteLine(message);
+        return error ? 1 : 0;
+    }
 
     private static string FormatHex(byte[] bytes)
     {
@@ -253,6 +302,12 @@ public static class Program
                      KEY=#RRGGBB ...    set colors per key name (e.g. w=ff0000 space=00ff00)
                      [--model ID]
               dump [--model ID]      Read and print current keyboard config
+              profile list           List saved profiles
+              profile save <name>    Save current lighting as a profile
+              profile apply <name>   Apply a saved profile to the keyboard
+                     [--model ID]
+              profile load <name>    Alias for apply
+              profile delete <name>  Delete a saved profile
               help                   Show this help
 
             Models: f75 (default), f87

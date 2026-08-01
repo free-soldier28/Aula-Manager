@@ -113,11 +113,12 @@ AulaManager.slnx
 - [x] **Тесты:** unit-тесты на аргументы (Aula.Cli.Tests)
 - [x] **Приёмка на железе:** весь набор команд (`list`, `info`, `effects`, `effect`, `off`, `dump`, `--raw-flags`, `--colorful`) отработал из консоли на Windows с живой F75
 
-### Этап 7. Профили
-- `KeyboardProfile` (JSON): подсветка, цвета per-key, настройки.
-- `ProfileService`: save/load/apply.
-- **Тесты:** round-trip сериализация, применение профиля = набор кадров 0x04.
-- **Критерий приёмки:** профиль, применённый с CLI, восстанавливается после выключения ПК.
+### Этап 7. Профили ✅
+- [x] `KeyboardProfile` (JSON): подсветка, цвета per-key, настройки.
+- [x] `ProfileService`: save/load/apply.
+- [x] CLI: `profile save <name>`, `profile apply <name>`, `profile list`, `profile delete`.
+- [x] **Тесты:** round-trip сериализация, применение профиля = набор кадров 0x04/0x06.
+- [ ] **Критерий приёмки:** профиль, применённый с CLI, восстанавливается после выключения ПК.
 
 ### Этап 8. GUI (Avalonia)
 - Вкладки: «Устройство», «Подсветка», «Профили».
