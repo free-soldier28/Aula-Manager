@@ -1,9 +1,10 @@
+using Aula.Core.Abstractions;
 using Aula.Core.Models;
 using Aula.Core.Protocol;
 
 namespace Aula.Core.Services;
 
-public sealed class LightingService
+public sealed class LightingService : ILightingController
 {
     private const int MaxBrightness = 4;
     private const int MaxSpeed = 4;
