@@ -4,6 +4,7 @@ using Aula.App.Services;
 using Aula.Core.Abstractions;
 using Aula.Core.Models;
 using Aula.Core.Services;
+using Avalonia.Media;
 
 namespace Aula.App.ViewModels;
 
@@ -51,6 +52,59 @@ public partial class LightingViewModel : ObservableObject
     public RgbColor Color => new((byte)Math.Clamp(Red, 0, 255), (byte)Math.Clamp(Green, 0, 255), (byte)Math.Clamp(Blue, 0, 255));
 
     public string ColorHex => Color.ToHex();
+
+    public IReadOnlyList<PaletteColor> Palette { get; } = LightingPalette.Create();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Color))]
+    [NotifyPropertyChangedFor(nameof(ColorHex))]
+    private HsvColor _wheelColor = new(1.0, 1.0, 1.0, 1.0);
+
+    partial void OnWheelColorChanged(HsvColor value)
+    {
+        if (_syncingWheel)
+        {
+            return;
+        }
+
+        Avalonia.Media.Color c = value.ToRgb();
+        Red = c.R;
+        Green = c.G;
+        Blue = c.B;
+    }
+
+    partial void OnRedChanged(int value) => SyncWheel();
+    partial void OnGreenChanged(int value) => SyncWheel();
+    partial void OnBlueChanged(int value) => SyncWheel();
+
+    private bool _syncingWheel;
+
+    private void SyncWheel()
+    {
+        if (_syncingWheel)
+        {
+            return;
+        }
+
+        _syncingWheel = true;
+        try
+        {
+            Color c = Avalonia.Media.Color.FromArgb(255, (byte)Math.Clamp(Red, 0, 255), (byte)Math.Clamp(Green, 0, 255), (byte)Math.Clamp(Blue, 0, 255));
+            WheelColor = c.ToHsv();
+        }
+        finally
+        {
+            _syncingWheel = false;
+        }
+    }
+
+    [RelayCommand]
+    private void PickColor(PaletteColor color)
+    {
+        Red = color.Color.R;
+        Green = color.Color.G;
+        Blue = color.Color.B;
+    }
 
     [ObservableProperty]
     private bool _isColorful;
@@ -104,6 +158,22 @@ public partial class LightingViewModel : ObservableObject
         if (value)
         {
             Red = Green = Blue = 255;
+        }
+    }
+
+    [RelayCommand]
+    private void ReloadDevice()
+    {
+        Message = "Reloading device…";
+        try
+        {
+            _session.Refresh();
+            IsConnected = _session.IsConnected;
+            Message = _session.IsConnected ? "Device reloaded." : "No device after reload.";
+        }
+        catch (Exception ex)
+        {
+            Message = "Reload failed: " + ex.Message;
         }
     }
 
@@ -213,4 +283,24 @@ public sealed record EffectItem(LedEffect Effect)
     public int Id => Effect.Id;
     public string Name => Effect.Name;
     public override string ToString() => $"{Effect.Id,2}  {Effect.Name}";
+}
+
+public sealed record PaletteColor(RgbColor Color)
+{
+    public string Hex => Color.ToHex();
+}
+
+public static class LightingPalette
+{
+    public static IReadOnlyList<PaletteColor> Create()
+    {
+        string[] hexes =
+        {
+            "#FFFFFF", "#FF4444", "#FFA500", "#FFEB3B", "#76FF03",
+            "#00E676", "#00BFA5", "#26C6DA", "#40C4FF", "#2979FF",
+            "#7C4DFF", "#B388FF", "#F50057", "#FF6E40", "#8D6E63",
+            "#78909C",
+        };
+        return hexes.Select(RgbColor.FromHex).Select(c => new PaletteColor(c)).ToList();
+    }
 }
