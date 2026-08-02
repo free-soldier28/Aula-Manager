@@ -155,3 +155,14 @@ AulaManager.slnx
 - Сонэкс-клавиатуры AULA (F99/F108 и др.): новый `IKeyboardDriver` поверх того же каркаса.
 - macOS: перенос транспорта (HID через IOKit/HidSharp уже кросс-платформенен), права Input Monitoring.
 - Тестирование на реальном железе.
+
+### Этап 13. Беспроводные линки и реверс-инжиниринг Bluetooth 🔄
+- [x] **2.4 ГГц донгль поддержан без изменений кода:** `VID 3554:PID FA09` (Compx/CX), тот же feature-report протокол 06. Проверено на железе: `info`, `effect`, `off`, `dump`, `profile` работают по донглю. В `docs/PROTOCOL.md`.
+- [x] **Bluetooth — field-verified как НЕ поддерживаемый:** Classic BR/EDR (не BLE), BT HID `VID 3554:PID FA08`; у всех HID-интерфейсов `MaxFeatureReportLength = 0` → нет `SET_FEATURE`/`GET_FEATURE` → протокол подсветки физически недоступен.
+- [x] Практическое правило задокументировано: подсветка — только **wired или 2.4 ГГц**.
+- [ ] **Реверс-инжиниринг BT (план):**
+  - [ ] Перехват classic-HID-трафика (Frida / btmon / Wireshark + Bumble/HCI) на live-клавиатуре в BT-режиме.
+  - [ ] Изучить контрольный канал **L2CAP PSM 0x11** (unsegmented) для vendor-команд.
+  - [ ] Перебор proprietary GATT-сервисов (`0xFF*`) через низкоуровневый BLE-сканер при наличии BLE-мода «AULA-F75 5.0 KB».
+  - [ ] Проверить наличие выделенного transport-интерфейса (аналог `IHidTransport`) → `SinoWealthFeatureDriver` без feature-report.
+  - [ ] **Критерий приёмки:** минимальная команда (например `effect wave`) доставлена до клавиатуры по BT и применена; либо официально закрыть BT как нереализуемый.

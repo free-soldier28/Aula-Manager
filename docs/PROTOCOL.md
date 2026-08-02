@@ -4,6 +4,50 @@ Hardware: AULA F75, wired USB, SinoWealth chipset, VID `258A:010C`.
 Reference model: AULA F87 (same chipset, same VID/PID).
 All findings below were verified on a live F75 unless marked otherwise.
 
+## Wireless (2.4 GHz) support — VERIFIED
+
+The F75 is a tri-mode board (wired + 2.4 GHz dongle + Bluetooth). The 2.4 GHz
+receiver presents itself as a separate HID device and is **fully controllable
+with the exact same feature-report protocol** as the wired link — no code
+changes required.
+
+- Receiver: `VID 3554:PID FA09` ("2.4G Wireless Receiver", Compx/CX), same as
+  Royal Kludge vendors. Other PIDs in the `3554` family are a different (mouse)
+  receiver and are NOT this keyboard — don't add them to the scanner.
+- Wired: `VID 258A:PID 010C`.
+
+### Scanning note
+
+The receiver exposes **multiple HID interfaces**; most report
+`MaxFeatureReportLength = 0` and are useless. Only the interface with
+`feature = 8` is functional. `DevicePicker.PickBest()` already filters on
+`MaxFeatureReportLength > 0` and picks the correct one — verified by
+`aula list` (one entry `feature=8`) and live effect/dump/profile commands.
+
+### Verified commands over the dongle
+
+All of: `info` (model read), `effect`, `off`, `dump` (config + color profile),
+`profile save/apply` — worked over 2.4 GHz with zero code changes.
+
+### Bluetooth — NOT supported by this protocol (field-verified)
+
+- In BT mode the keyboard connects over **Bluetooth Classic (BR/EDR)** as
+  "`AULA-F75 3.0 KB`" (BT 3.0 profile; the BLE 5.0 twin is "`AULA-F75 5.0 KB`").
+  A BLE scanner (``bleak``) never sees it — it is a Classic-BT HID device.
+- On Windows the BT link exposes a HID device `VID 3554 : PID FA08` (6 HID
+  collections, `col01`–`col06`) — note the PID differs from the 2.4G dongle
+  (`FA09`).
+- **Every BT-HID interface reports `MaxFeatureReportLength = 0`** (checked with
+  HidSharp enumeration while the keyboard was live in BT mode). Without a
+  feature report there is no `SET_FEATURE`/`GET_FEATURE` transport at all, so
+  the lighting protocol (report id `0x06`, CMD `0x0A/0x04`) **physically cannot
+  be sent**.
+- Consequence: RGB over Bluetooth needs the vendor driver or a low-level
+  (L2CAP PSM 0x11 control-channel / proprietary GATT) reverse-engineering path;
+  none exists in public open-source (all AULA projects drive wired + 2.4G only).
+  Treat BT as unsupported.
+- Practical rule: drive lighting in **wired or 2.4 GHz** mode only.
+
 ## Feature Report
 
 - HID Feature Report, **Report ID 6**, vendor interface (usage_page `0xFF00`/`0xFF13`).
