@@ -32,6 +32,9 @@ public partial class DeviceViewModel : ObservableObject
     [ObservableProperty]
     private bool _isConnected;
 
+    [ObservableProperty]
+    private string _connectionType = "-";
+
     public DeviceViewModel(KeyboardSession session)
     {
         _session = session;
@@ -41,8 +44,15 @@ public partial class DeviceViewModel : ObservableObject
     [RelayCommand]
     private void Refresh()
     {
-        _session.Refresh();
-        RefreshFromDevice();
+        try
+        {
+            _session.Refresh();
+            RefreshFromDevice();
+        }
+        catch (Exception ex)
+        {
+            Status = "Refresh failed: " + ex.Message;
+        }
     }
 
     private void RefreshFromDevice()
@@ -53,7 +63,7 @@ public partial class DeviceViewModel : ObservableObject
         if (keyboard is null)
         {
             Status = _session.Error ?? "No AULA keyboard detected.";
-            DeviceName = VidPid = Serial = ModelId = ModelRaw = "-";
+            DeviceName = VidPid = Serial = ModelId = ModelRaw = ConnectionType = "-";
             return;
         }
 
@@ -63,9 +73,35 @@ public partial class DeviceViewModel : ObservableObject
         VidPid = $"{info.VendorId:X4}:{info.ProductId:X4}";
         Serial = string.IsNullOrWhiteSpace(info.SerialNumber) ? "n/a" : info.SerialNumber;
         ModelId = keyboard.Model.Id;
+        ConnectionType = ResolveConnectionType(info);
 
-        ModelRaw = keyboard is ISinowealthDiagnostics d
-            ? Convert.ToHexString(d.QueryModel())
-            : "-";
+        try
+        {
+            ModelRaw = keyboard is ISinowealthDiagnostics d
+                ? Convert.ToHexString(d.QueryModel())
+                : "-";
+        }
+        catch (Exception ex)
+        {
+            ModelRaw = "error: " + ex.Message;
+        }
+    }
+
+    private static string ResolveConnectionType(DeviceInfo info)
+    {
+        if (info.VendorId == AulaDeviceIds.VendorSinoWealth
+            && info.ProductId == AulaDeviceIds.ProductF75F87Wired)
+        {
+            return "Wired (USB)";
+        }
+
+        if (info.VendorId == AulaDeviceIds.VendorWireless)
+        {
+            return info.ProductId == AulaDeviceIds.ProductWireless
+                ? "Wireless (2.4 GHz)"
+                : "Bluetooth";
+        }
+
+        return "Unknown";
     }
 }

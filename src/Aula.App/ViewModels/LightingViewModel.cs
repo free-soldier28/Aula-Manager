@@ -141,8 +141,16 @@ public partial class LightingViewModel : ObservableObject
             HasSpeed ? Speed : null,
             HasColor && !IsColorful ? Color : null,
             IsColorful);
-        keyboard.Lighting.Apply(config);
-        Message = $"Applied '{SelectedEffect.Effect.Name}'.";
+
+        try
+        {
+            keyboard.Lighting.Apply(config);
+            Message = $"Applied '{SelectedEffect.Effect.Name}'.";
+        }
+        catch (Exception ex)
+        {
+            Message = "Failed to apply: " + ex.Message;
+        }
     }
 
     [RelayCommand]
@@ -154,8 +162,15 @@ public partial class LightingViewModel : ObservableObject
             return;
         }
 
-        keyboard.Lighting.TurnOff();
-        Message = "Lighting turned off.";
+        try
+        {
+            keyboard.Lighting.TurnOff();
+            Message = "Lighting turned off.";
+        }
+        catch (Exception ex)
+        {
+            Message = "Failed to turn off: " + ex.Message;
+        }
     }
 
     private void ReadFromDevice()
@@ -165,8 +180,18 @@ public partial class LightingViewModel : ObservableObject
             return;
         }
 
-        KeyboardConfig config = keyboard.Lighting.ReadConfig();
-        int id = config.EffectId;
+        KeyboardConfig config;
+        int id;
+        try
+        {
+            config = keyboard.Lighting.ReadConfig();
+        }
+        catch (Exception ex)
+        {
+            Message = "Failed to read config: " + ex.Message;
+            return;
+        }
+        id = config.EffectId;
         SelectedEffect = EffectItems.FirstOrDefault(i => i.Effect.Id == id) ?? EffectItems.FirstOrDefault();
 
         EffectParams? p = config.GetParams(id);

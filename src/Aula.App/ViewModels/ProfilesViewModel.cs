@@ -68,10 +68,17 @@ public partial class ProfilesViewModel : ObservableObject
             return;
         }
 
-        _profiles.Save(name, KeyboardProfile.FromCurrent(name, keyboard));
-        RefreshList();
-        SelectedProfile = name;
-        Message = $"Saved profile '{name}'.";
+        try
+        {
+            _profiles.Save(name, KeyboardProfile.FromCurrent(name, keyboard));
+            RefreshList();
+            SelectedProfile = name;
+            Message = $"Saved profile '{name}'.";
+        }
+        catch (Exception ex)
+        {
+            Message = $"Failed to save profile: {ex.Message}";
+        }
     }
 
     [RelayCommand]
@@ -89,8 +96,15 @@ public partial class ProfilesViewModel : ObservableObject
             return;
         }
 
-        _profiles.Apply(SelectedProfile, _session.Current);
-        Message = $"Applied profile '{SelectedProfile}'.";
+        try
+        {
+            _profiles.Apply(SelectedProfile, _session.Current);
+            Message = $"Applied profile '{SelectedProfile}'.";
+        }
+        catch (Exception ex)
+        {
+            Message = $"Failed to apply profile: {ex.Message}";
+        }
     }
 
     [RelayCommand]
@@ -102,8 +116,15 @@ public partial class ProfilesViewModel : ObservableObject
             return;
         }
 
-        _profiles.Delete(SelectedProfile);
-        RefreshList();
-        Message = $"Deleted profile '{SelectedProfile}'.";
+        try
+        {
+            _profiles.Delete(SelectedProfile);
+            RefreshList();
+            Message = $"Deleted profile '{SelectedProfile}'.";
+        }
+        catch (Exception ex)
+        {
+            Message = $"Failed to delete profile: {ex.Message}";
+        }
     }
 }
