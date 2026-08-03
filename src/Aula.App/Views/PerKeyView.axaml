@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Aula.App.ViewModels"
+             xmlns:cp="using:Avalonia.Controls.Primitives"
+             x:Class="Aula.App.Views.PerKeyView"
+             x:DataType="vm:PerKeyViewModel"
+             Padding="16">
+
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0 12 0 0">
+            <Button Content="Apply" Command="{Binding ApplyCommand}" Classes="accent" />
+            <Button Content="Fill all" Command="{Binding FillAllCommand}" />
+            <Button Content="Clear" Command="{Binding ClearAllCommand}" />
+            <Button Content="Reload device" Command="{Binding ReloadDeviceCommand}" />
+            <TextBlock Text="{Binding Message}" VerticalAlignment="Center" Foreground="Gray" Margin="8 0 0 0" />
+        </StackPanel>
+
+        <Grid ColumnDefinitions="*,300" RowDefinitions="*">
+            <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Border BorderBrush="#333333" BorderThickness="1" CornerRadius="8" Padding="12" Background="#202020"
+                        HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:KeyboardRowViewModel">
+                                <StackPanel Orientation="Horizontal" Spacing="3" Margin="0 3">
+                                    <ItemsControl ItemsSource="{Binding Keys}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:KeyCellViewModel">
+                                                <Button Margin="{Binding Margin}" Width="{Binding PixelWidth}" Height="30" Padding="0"
+                                                        Background="{Binding Background}"
+                                                        BorderBrush="{Binding SelectedBorder}"
+                                                        BorderThickness="{Binding BorderSize}"
+                                                        Foreground="{Binding Foreground}"
+                                                        Command="{Binding SelectCommand}">
+                                                    <TextBlock Text="{Binding Label}" FontSize="10"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </ScrollViewer>
+
+            <StackPanel Grid.Column="1" Margin="16 0 0 0" Spacing="8">
+                <TextBlock Text="Selected key" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding SelectedKey}" Foreground="Gray" />
+
+                <TextBlock Text="Color" FontWeight="SemiBold" Margin="0 8 0 0" />
+                <cp:ColorSpectrum Width="170" Height="170"
+                                  HsvColor="{Binding WheelColor}"
+                                  Shape="Ring"
+                                  HorizontalAlignment="Left" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Border Width="56" Height="56" CornerRadius="8" Background="{Binding PreviewBrush}" BorderBrush="#444444" BorderThickness="1" />
+                    <TextBlock Text="{Binding ColorHex}" FontFamily="Cascadia Mono, Consolas" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <TextBlock Text="Palette" FontWeight="SemiBold" Margin="0 8 0 0" />
+                <ItemsControl ItemsSource="{Binding Palette}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PaletteColor">
+                            <Button Width="22" Height="22" Padding="0" Margin="2" CornerRadius="5"
+                                    Background="{Binding Hex}" BorderThickness="1"
+                                    Command="{Binding $parent[ItemsControl].((vm:PerKeyViewModel)DataContext).PickColorCommand}"
+                                    CommandParameter="{Binding}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="Click a key to paint it with the selected color." FontSize="11" Foreground="Gray" Margin="0 12 0 0" TextWrapping="Wrap" />
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</UserControl>

@@ -4,6 +4,8 @@ namespace Aula.Core.Abstractions;
 
 public sealed class F75Layout : IKeyboardLayout
 {
+    public const int LedCount = 126;
+
     public static readonly F75Layout Instance = new();
 
     private static readonly IReadOnlyDictionary<string, int> IndexByName =

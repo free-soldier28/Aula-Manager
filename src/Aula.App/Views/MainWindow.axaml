@@ -5,10 +5,10 @@
         x:Class="Aula.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="AulaManager"
-        Width="760"
-        Height="560"
-        MinWidth="640"
-        MinHeight="480"
+        Width="940"
+        Height="600"
+        MinWidth="760"
+        MinHeight="500"
         WindowStartupLocation="CenterScreen">
 
     <Design.DataContext>
@@ -29,6 +29,9 @@
             </TabItem>
             <TabItem Header="Lighting">
                 <views:LightingView DataContext="{Binding Lighting}" />
+            </TabItem>
+            <TabItem Header="Per-Key">
+                <views:PerKeyView DataContext="{Binding PerKey}" />
             </TabItem>
             <TabItem Header="Profiles">
                 <views:ProfilesView DataContext="{Binding Profiles}" />

@@ -9,6 +9,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     public DeviceViewModel Device { get; }
     public LightingViewModel Lighting { get; }
+    public PerKeyViewModel PerKey { get; }
     public ProfilesViewModel Profiles { get; }
     public UpdateViewModel Update { get; }
 
@@ -16,6 +17,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         Device = new DeviceViewModel(_session);
         Lighting = new LightingViewModel(_session);
+        PerKey = new PerKeyViewModel(_session);
         Profiles = new ProfilesViewModel(_session);
         Update = new UpdateViewModel();
         _session.Changed += OnSessionChanged;
@@ -28,6 +30,7 @@ public partial class MainWindowViewModel : ObservableObject
     private void OnSessionChanged()
     {
         Lighting.RefreshFromDevice();
+        PerKey.RefreshFromDevice();
         Profiles.RefreshList();
     }
 }

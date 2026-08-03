@@ -50,4 +50,21 @@ public class F75LayoutTests
         Assert.Contains("enter", keys);
         Assert.Contains("f12", keys);
     }
+
+    [Fact]
+    public void LedCount_MatchesHardwareTable()
+    {
+        Assert.Equal(126, F75Layout.LedCount);
+    }
+
+    [Fact]
+    public void AllLayoutKeys_ResolveWithinLedTable()
+    {
+        F75Layout layout = F75Layout.Instance;
+        foreach (string key in layout.Keys)
+        {
+            int index = layout.GetLedIndex(key);
+            Assert.InRange(index, 0, F75Layout.LedCount - 1);
+        }
+    }
 }
