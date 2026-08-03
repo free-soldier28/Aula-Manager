@@ -23,11 +23,13 @@ xmlns:cp="using:Avalonia.Controls.Primitives"
                           SelectedItem="{Binding SelectedEffect}" />
 
                 <TextBlock Text="Brightness" FontWeight="SemiBold" IsVisible="{Binding HasBrightness}" />
-                <Slider Minimum="0" Maximum="9" TickFrequency="1" Value="{Binding Brightness}"
+                <Slider Minimum="0" Maximum="9" TickFrequency="1" IsSnapToTickEnabled="True"
+                        Value="{Binding Brightness, Mode=TwoWay}"
                         IsVisible="{Binding HasBrightness}" />
 
                 <TextBlock Text="Speed" FontWeight="SemiBold" IsVisible="{Binding HasSpeed}" />
-                <Slider Minimum="0" Maximum="4" TickFrequency="1" Value="{Binding Speed}"
+                <Slider Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"
+                        Value="{Binding Speed, Mode=TwoWay}"
                         IsVisible="{Binding HasSpeed}" />
 
                 <CheckBox Content="Colorful" IsChecked="{Binding IsColorful}"

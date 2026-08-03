@@ -215,7 +215,7 @@ public partial class LightingViewModel : ObservableObject
         try
         {
             keyboard.Lighting.Apply(config);
-            Message = $"Applied '{SelectedEffect.Effect.Name}'.";
+            Message = $"Applied '{SelectedEffect.Effect.Name}' (brightness={config.Brightness?.ToString() ?? "-"}, speed={config.Speed?.ToString() ?? "-"}).";
         }
         catch (Exception ex)
         {
