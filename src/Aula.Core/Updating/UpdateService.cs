@@ -1,7 +1,9 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Aula.Core.Logging;
 using Aula.Core.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Aula.Core.Updating;
 
@@ -30,6 +32,7 @@ public sealed class UpdateService
     private readonly string _releasesApi;
     private readonly UpdatePlatform _platform;
     private readonly string _currentVersion;
+    private readonly ILogger<UpdateService> _log;
 
     public UpdateService(
         HttpClient? http = null,
@@ -42,6 +45,7 @@ public sealed class UpdateService
         _releasesApi = releasesApi ?? ProductInfo.ReleasesApi;
         _platform = platform ?? UpdatePlatform.Detect();
         _currentVersion = currentVersion ?? ProductInfo.VersionString;
+        _log = AulaLogging.Logger<UpdateService>();
     }
 
     public async Task<UpdateInfo> CheckAsync(CancellationToken ct = default)
@@ -50,21 +54,27 @@ public sealed class UpdateService
 
         if (release is null || release.Prerelease)
         {
+            _log.LogDebug("No eligible release found (current {Current})", _currentVersion);
             return UpdateInfo.None(_currentVersion);
         }
 
         string? latestVersion = ParseTag(release.Tag);
         if (latestVersion is null || !IsNewer(latestVersion, _currentVersion))
         {
+            _log.LogDebug("Latest release {Latest} is not newer than {Current}", latestVersion ?? release.Tag, _currentVersion);
             return UpdateInfo.None(_currentVersion);
         }
 
         GitHubAsset? asset = release.Assets.FirstOrDefault(a => _platform.MatchesAsset(a.Name));
         if (asset is null)
         {
+            _log.LogWarning("Release {Tag} has no asset matching platform {Os}-{Arch}", release.Tag, _platform.Os, _platform.Arch);
             return UpdateInfo.None(_currentVersion);
         }
 
+        _log.LogInformation(
+            "Update available: {Latest} (current {Current}), asset {Asset}",
+            latestVersion, _currentVersion, asset.Name);
         return new UpdateInfo(
             IsAvailable: true,
             LatestVersion: latestVersion,
@@ -84,7 +94,9 @@ public sealed class UpdateService
 
         using var response = await _http.GetAsync(update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+        byte[] bytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+        _log.LogInformation("Downloaded {Asset} ({Bytes} bytes)", update.AssetName ?? "update.zip", bytes.Length);
+        return bytes;
     }
 
     public async Task<string> DownloadToFileAsync(

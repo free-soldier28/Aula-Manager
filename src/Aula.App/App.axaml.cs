@@ -5,12 +5,16 @@ using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using Aula.App.ViewModels;
 using Aula.App.Views;
+using Aula.Core.Logging;
 using Aula.Core.Updating;
+using Microsoft.Extensions.Logging;
 
 namespace Aula.App;
 
 public partial class App : Application
 {
+    private static readonly ILogger<App> Log = AulaLogging.Logger<App>();
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -20,6 +24,8 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+            TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
             DisableAvaloniaDataAnnotationValidation();
             var mainViewModel = new MainWindowViewModel();
             desktop.MainWindow = new MainWindow
@@ -31,6 +37,17 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+    {
+        Log.LogCritical(e.ExceptionObject as Exception ?? new Exception("Unhandled exception"), "Unhandled application exception");
+    }
+
+    private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        Log.LogError(e.Exception, "Unobserved task exception");
+        e.SetObserved();
     }
 
     private static async void CheckForUpdateOnStartup(

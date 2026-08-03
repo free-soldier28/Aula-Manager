@@ -1,7 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Aula.Core.Abstractions;
+using Aula.Core.Logging;
 using Aula.Core.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Aula.Core.Models;
 
@@ -15,12 +17,14 @@ public sealed class ProfileService
     };
 
     private readonly string _path;
+    private readonly ILogger<ProfileService> _log;
 
     public ProfileService(string? directory = null)
     {
         _path = directory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".aula");
+        _log = AulaLogging.Logger<ProfileService>();
     }
 
     public string DirectoryPath => _path;
@@ -32,13 +36,21 @@ public sealed class ProfileService
         Directory.CreateDirectory(_path);
         string path = BuildPath(name);
         File.WriteAllText(path, JsonSerializer.Serialize(profile, JsonOptions));
+        _log.LogInformation("Saved profile '{Name}' to {Path}", name, path);
         return profile;
     }
 
     public KeyboardProfile? Load(string name)
     {
         string path = BuildPath(name);
-        return File.Exists(path) ? LoadFromPath(path) : null;
+        if (File.Exists(path))
+        {
+            _log.LogDebug("Loading profile '{Name}' from {Path}", name, path);
+            return LoadFromPath(path);
+        }
+
+        _log.LogDebug("Profile '{Name}' not found at {Path}", name, path);
+        return null;
     }
 
     public KeyboardProfile LoadFromPath(string path)
@@ -51,6 +63,7 @@ public sealed class ProfileService
     public void Apply(string name, IAulaKeyboard keyboard)
     {
         KeyboardProfile? profile = Load(name) ?? throw new AulaException($"Profile '{name}' not found.");
+        _log.LogInformation("Applying profile '{Name}'", name);
         ApplyProfile(profile, keyboard);
     }
 
@@ -81,10 +94,12 @@ public sealed class ProfileService
         string path = BuildPath(name);
         if (!File.Exists(path))
         {
+            _log.LogDebug("Delete skipped: profile '{Name}' not found", name);
             return false;
         }
 
         File.Delete(path);
+        _log.LogInformation("Deleted profile '{Name}'", name);
         return true;
     }
 

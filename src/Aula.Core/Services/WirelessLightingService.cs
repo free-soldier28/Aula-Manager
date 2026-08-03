@@ -1,6 +1,8 @@
 using Aula.Core.Abstractions;
+using Aula.Core.Logging;
 using Aula.Core.Models;
 using Aula.Core.Protocol;
+using Microsoft.Extensions.Logging;
 
 namespace Aula.Core.Services;
 
@@ -22,11 +24,13 @@ public sealed class WirelessLightingService : ILightingController
 
     private readonly WirelessProtocol _protocol;
     private readonly ModelConfig _model;
+    private readonly ILogger<WirelessLightingService> _log;
 
     public WirelessLightingService(WirelessProtocol protocol, ModelConfig model)
     {
         _protocol = protocol;
         _model = model;
+        _log = AulaLogging.Logger<WirelessLightingService>();
     }
 
     public KeyboardConfig ReadConfig()
@@ -41,6 +45,14 @@ public sealed class WirelessLightingService : ILightingController
         {
             throw new AulaProtocolException($"Unknown effect id {config.EffectId}.");
         }
+
+        _log.LogInformation(
+            "Applying wireless effect {EffectId} brightness={Brightness} speed={Speed} color={Color} colorful={Colorful}",
+            config.EffectId,
+            config.Brightness?.ToString() ?? "-",
+            config.Speed?.ToString() ?? "-",
+            config.Color?.ToHex() ?? "-",
+            config.Colorful);
 
         byte[]?[] read = _protocol.ReadConfig();
         bool gotConfig = read.All(f => f is not null);
@@ -74,6 +86,7 @@ public sealed class WirelessLightingService : ILightingController
 
     public void Reset()
     {
+        _log.LogInformation("Resetting wireless lighting config to factory defaults");
         var writeFragments = new List<byte[]>(ConfigFragmentCount);
         for (int seq = 0; seq < ConfigFragmentCount; seq++)
         {

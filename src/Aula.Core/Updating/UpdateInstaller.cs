@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Aula.Core.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace Aula.Core.Updating;
 
@@ -10,6 +12,7 @@ public sealed class UpdateInstaller
     private readonly Action<ProcessStartInfo> _startProcess;
     private readonly Func<bool> _isWindows;
     private readonly Action<string, string> _chmod;
+    private readonly ILogger<UpdateInstaller> _log;
 
     public UpdateInstaller(
         string? currentExecutable = null,
@@ -27,6 +30,7 @@ public sealed class UpdateInstaller
         _startProcess = startProcess ?? (si => Process.Start(si));
         _isWindows = isWindows ?? OperatingSystem.IsWindows;
         _chmod = chmod ?? ((file, args) => Process.Start(file, args)?.WaitForExit());
+        _log = AulaLogging.Logger<UpdateInstaller>();
     }
 
     public string StagingDirectory => _stagingDirectory;
@@ -35,10 +39,12 @@ public sealed class UpdateInstaller
         string zipPath,
         CancellationToken ct = default)
     {
+        _log.LogInformation("Staging update from {Zip} into {Staging}", zipPath, _stagingDirectory);
         Directory.CreateDirectory(_stagingDirectory);
         System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, _stagingDirectory, overwriteFiles: true);
 
         string script = CreateUpdaterScript();
+        _log.LogInformation("Created updater script {Script}", script);
         var startInfo = new ProcessStartInfo
         {
             FileName = script,

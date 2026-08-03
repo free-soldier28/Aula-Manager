@@ -15,6 +15,15 @@ public sealed class FakeScanner : IHidDeviceScanner
     public IReadOnlyList<DeviceInfo> ScanAll() => Devices.ToList();
 }
 
+public sealed class ThrowingScanner : IHidDeviceScanner
+{
+    public Exception Exception { get; } = new IOException("scan boom");
+
+    public IReadOnlyList<DeviceInfo> Scan(int vendorId, int productId) => throw Exception;
+
+    public IReadOnlyList<DeviceInfo> ScanAll() => throw Exception;
+}
+
 public sealed class FakeTransport : IHidTransport
 {
     public readonly List<byte[]> Sent = new();

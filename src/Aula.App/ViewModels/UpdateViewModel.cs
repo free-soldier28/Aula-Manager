@@ -1,13 +1,16 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Aula.Core.Logging;
 using Aula.Core.Models;
 using Aula.Core.Updating;
+using Microsoft.Extensions.Logging;
 
 namespace Aula.App.ViewModels;
 
 public partial class UpdateViewModel : ObservableObject
 {
     private readonly UpdateService _service;
+    private readonly ILogger<UpdateViewModel> _log = AulaLogging.Logger<UpdateViewModel>();
 
     [ObservableProperty]
     private string _currentVersion = ProductInfo.VersionString;
@@ -47,16 +50,19 @@ public partial class UpdateViewModel : ObservableObject
                 HasUpdate = true;
                 Status = $"New version {info.LatestVersion} is available (current {info.CurrentVersion}).";
                 ReleaseNotes = info.ReleaseNotes ?? string.Empty;
+                _log.LogInformation("Update available: {Latest} (current {Current})", info.LatestVersion, info.CurrentVersion);
             }
             else
             {
                 Status = $"You are up to date (v{info.CurrentVersion}).";
                 ReleaseNotes = string.Empty;
+                _log.LogDebug("No update available (current {Current})", info.CurrentVersion);
             }
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
         {
             Status = $"Could not check for updates: {ex.Message}";
+            _log.LogWarning(ex, "Update check failed: {Message}", ex.Message);
         }
         finally
         {
@@ -89,10 +95,12 @@ public partial class UpdateViewModel : ObservableObject
             string zip = await _service.DownloadToFileAsync(info, installer.StagingDirectory, cts.Token);
             await installer.InstallAsync(zip, cts.Token);
             Status = "Update staged. The app will restart to apply it.";
+            _log.LogInformation("Update {Latest} staged for install", info.LatestVersion);
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
         {
             Status = $"Install failed: {ex.Message}";
+            _log.LogError(ex, "Update install failed: {Message}", ex.Message);
         }
         finally
         {

@@ -1,6 +1,8 @@
 using Aula.Core.Abstractions;
+using Aula.Core.Logging;
 using Aula.Core.Models;
 using Aula.Core.Protocol;
+using Microsoft.Extensions.Logging;
 
 namespace Aula.Core.Services;
 
@@ -13,11 +15,13 @@ public sealed class LightingService : ILightingController
 
     private readonly SinowealthProtocol _protocol;
     private readonly ModelConfig _model;
+    private readonly ILogger<LightingService> _log;
 
     public LightingService(SinowealthProtocol protocol)
     {
         _protocol = protocol;
         _model = protocol.Model;
+        _log = AulaLogging.Logger<LightingService>();
     }
 
     public KeyboardConfig ReadConfig() => KeyboardConfig.Parse(_protocol.ReadConfigRaw(), _model);
@@ -26,6 +30,14 @@ public sealed class LightingService : ILightingController
     {
         LedEffect? effect = FindEffect(config.EffectId) ?? throw new AulaProtocolException(
             $"Unknown effect id {config.EffectId}.");
+
+        _log.LogInformation(
+            "Applying effect {EffectId} brightness={Brightness} speed={Speed} color={Color} colorful={Colorful}",
+            config.EffectId,
+            config.Brightness?.ToString() ?? "-",
+            config.Speed?.ToString() ?? "-",
+            config.Color?.ToHex() ?? "-",
+            config.Colorful);
 
         var raw = _protocol.ReadConfigRaw();
 
@@ -68,6 +80,7 @@ public sealed class LightingService : ILightingController
 
     public void Reset()
     {
+        _log.LogInformation("Resetting lighting config to factory defaults");
         byte[] raw = _protocol.ReadConfigRaw();
 
         raw[_model.CustomModeOffset] = 0x00;

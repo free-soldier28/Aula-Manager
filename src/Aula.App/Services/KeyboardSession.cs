@@ -1,13 +1,16 @@
 using Aula.Core;
 using Aula.Core.Abstractions;
+using Aula.Core.Logging;
 using Aula.Core.Models;
 using Aula.Core.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Aula.App.Services;
 
 public sealed class KeyboardSession : IDisposable
 {
     private readonly KeyboardDeviceFactory _factory = new();
+    private readonly ILogger<KeyboardSession> _log = AulaLogging.Logger<KeyboardSession>();
     private IAulaKeyboard? _keyboard;
 
     public event Action? Changed;
@@ -38,12 +41,18 @@ public sealed class KeyboardSession : IDisposable
             if (_keyboard is null)
             {
                 Error = "TryOpen returned null (no device found).";
+                _log.LogWarning("TryOpen returned null (no device found)");
+            }
+            else
+            {
+                _log.LogInformation("Connected: {Model} on {Path}", _keyboard.Model.Id, _keyboard.Info.DevicePath);
             }
         }
         catch (Exception ex)
         {
             _keyboard = null;
             Error = ex.GetType().Name + ": " + ex.Message;
+            _log.LogError(ex, "Failed to open keyboard");
         }
 
         Changed?.Invoke();

@@ -71,6 +71,27 @@ public class KeyboardDeviceFactoryTests
         Assert.Equal("f87", keyboard.Model.Id);
     }
 
+    [Fact]
+    public void TryOpen_ReturnsNull_WhenNoDriverMatches()
+    {
+        var scanner = new FakeScanner();
+        scanner.Devices.Add(new DeviceInfo(
+            "path://unknown", 0x1234, 0x5678, "SN", "Unknown HID Device", 0));
+        var factory = CreateFactory(scanner);
+
+        Assert.Null(factory.TryOpen());
+    }
+
+    [Fact]
+    public void TryOpen_ReturnsNull_WhenNoDriverMatchesModelId()
+    {
+        var scanner = new FakeScanner();
+        scanner.Devices.Add(F75Device());
+        var factory = CreateFactory(scanner);
+
+        Assert.Null(factory.TryOpen("f100"));
+    }
+
     private static KeyboardDeviceFactory CreateFactory(IHidDeviceScanner scanner)
     {
         var registry = new DriverRegistry();

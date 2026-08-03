@@ -2,10 +2,12 @@ using Aula.Core;
 using Aula.Core.Abstractions;
 using Aula.Core.Devices;
 using Aula.Core.Drivers;
+using Aula.Core.Logging;
 using Aula.Core.Models;
 using Aula.Core.Protocol;
 using Aula.Core.Services;
 using Aula.Core.Updating;
+using Microsoft.Extensions.Logging;
 
 namespace Aula.Cli;
 
@@ -23,6 +25,7 @@ public sealed class CliRunner
     private readonly UpdateInstaller _updateInstaller;
     private readonly TextWriter _out;
     private readonly TextWriter _err;
+    private readonly ILogger<CliRunner> _log;
 
     public CliRunner(
         IHidDeviceScanner? scanner = null,
@@ -42,9 +45,15 @@ public sealed class CliRunner
         _transportFactory = transportFactory ?? new HidSharpTransportFactory();
         _out = @out ?? Console.Out;
         _err = err ?? Console.Error;
+        _log = AulaLogging.Logger<CliRunner>();
     }
 
-    public int Run(string[] args) => Run(CliCommandParser.Parse(args));
+    public int Run(string[] args)
+    {
+        CliCommand command = CliCommandParser.Parse(args);
+        _log.LogDebug("Running command {Command}", command.GetType().Name);
+        return Run(command);
+    }
 
     public int Run(CliCommand command) => command switch
     {
@@ -66,6 +75,7 @@ public sealed class CliRunner
     public int RunList()
     {
         IReadOnlyList<DeviceInfo> devices = _scanner.ScanAll();
+        _log.LogInformation("Found {Count} AULA device(s)", devices.Count);
         if (devices.Count == 0)
         {
             _out.WriteLine("No AULA devices found.");
@@ -201,6 +211,7 @@ public sealed class CliRunner
     public int RunInfo(InfoCommand c)
     {
         using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
+        _log.LogInformation("Querying device info (model {Model})", keyboard.Model.Id);
 
         _out.WriteLine($"Device      : {keyboard.Info.DisplayName}");
         _out.WriteLine($"VID:PID     : {keyboard.Info.VendorId:X4}:{keyboard.Info.ProductId:X4}");
@@ -480,6 +491,7 @@ public sealed class CliRunner
     public int RunDump(DumpCommand c)
     {
         using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
+        _log.LogInformation("Dumping config (model {Model})", keyboard.Model.Id);
         KeyboardConfig config = keyboard.Lighting.ReadConfig();
 
         _out.WriteLine($"Effect      : {config.EffectId}");
