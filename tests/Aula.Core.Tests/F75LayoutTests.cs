@@ -54,7 +54,7 @@ public class F75LayoutTests
     [Fact]
     public void LedCount_MatchesHardwareTable()
     {
-        Assert.Equal(126, F75Layout.LedCount);
+        Assert.Equal(126, F75Layout.Instance.LedCount);
     }
 
     [Fact]
@@ -64,7 +64,19 @@ public class F75LayoutTests
         foreach (string key in layout.Keys)
         {
             int index = layout.GetLedIndex(key);
-            Assert.InRange(index, 0, F75Layout.LedCount - 1);
+            Assert.InRange(index, 0, layout.LedCount - 1);
+        }
+    }
+
+    [Fact]
+    public void VisualRows_ResolveWithinLedTable()
+    {
+        F75Layout layout = F75Layout.Instance;
+        foreach (KeyShape key in layout.Rows.SelectMany(r => r))
+        {
+            int index = layout.GetLedIndex(key.Name);
+            Assert.True(index >= 0, $"Visual key '{key.Name}' has no LED index.");
+            Assert.InRange(index, 0, layout.LedCount - 1);
         }
     }
 }

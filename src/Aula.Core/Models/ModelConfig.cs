@@ -1,3 +1,5 @@
+using Aula.Core.Abstractions;
+
 namespace Aula.Core.Models;
 
 public sealed record ModelConfig(
@@ -14,7 +16,8 @@ public sealed record ModelConfig(
     int BatteryLightOffset,
     int EffectParamsBase,
     int EffectParamsStride,
-    IReadOnlyList<LedEffect> Effects)
+    IReadOnlyList<LedEffect> Effects,
+    IKeyboardLayout Layout)
 {
     public static readonly ModelConfig F75 = new(
         "f75",
@@ -30,7 +33,8 @@ public sealed record ModelConfig(
         BatteryLightOffset: 36,
         EffectParamsBase: 64,
         EffectParamsStride: 2,
-        EffectLibrary.Default);
+        EffectLibrary.Default,
+        Layout: F75Layout.Instance);
 
     public static readonly ModelConfig F87 = F75 with { Id = "f87" };
 

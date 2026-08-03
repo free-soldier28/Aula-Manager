@@ -13,7 +13,11 @@ public partial class PerKeyViewModel : ObservableObject
 {
     private readonly KeyboardSession _session;
 
-    public IReadOnlyList<KeyboardRowViewModel> Rows { get; }
+    public IReadOnlyList<KeyboardRowViewModel> Rows { get; private set; }
+
+    private string? _layoutModelId;
+
+    private IKeyboardLayout CurrentLayout => _session.Current?.Layout ?? F75Layout.Instance;
 
     [ObservableProperty]
     private KeyCellViewModel? _selectedKey;
@@ -62,7 +66,7 @@ public partial class PerKeyViewModel : ObservableObject
     {
         _session = session;
         _session.Changed += RefreshFromDevice;
-        Rows = BuildLayout();
+        Rows = BuildLayout(CurrentLayout);
     }
 
     partial void OnWheelColorChanged(HsvColor value)
@@ -137,7 +141,8 @@ public partial class PerKeyViewModel : ObservableObject
 
         try
         {
-            var colors = new RgbColor[F75Layout.LedCount];
+            IKeyboardLayout layout = CurrentLayout;
+            var colors = new RgbColor[layout.LedCount];
             foreach (KeyCellViewModel key in Rows.SelectMany(r => r.Keys))
             {
                 if (key.LedIndex >= 0 && key.LedIndex < colors.Length)
@@ -190,17 +195,25 @@ public partial class PerKeyViewModel : ObservableObject
         }
     }
 
-    public void RefreshFromDevice() => IsConnected = _session.Current is not null;
-
-    private IReadOnlyList<KeyboardRowViewModel> BuildLayout()
+    public void RefreshFromDevice()
     {
-        IKeyboardLayout layout = F75Layout.Instance;
-        return KeyLayout.Select(row =>
+        IsConnected = _session.Current is not null;
+        string modelId = _session.Current?.Model.Id ?? string.Empty;
+        if (_layoutModelId != modelId)
+        {
+            _layoutModelId = modelId;
+            Rows = BuildLayout(CurrentLayout);
+        }
+    }
+
+    private IReadOnlyList<KeyboardRowViewModel> BuildLayout(IKeyboardLayout layout)
+    {
+        return layout.Rows.Select(row =>
         {
             var cells = new List<KeyCellViewModel>();
             double x = 0;
             double placed = 0;
-            foreach (var k in row)
+            foreach (KeyShape k in row)
             {
                 x += k.Gap;
                 double margin = x - placed;
@@ -212,49 +225,6 @@ public partial class PerKeyViewModel : ObservableObject
             return new KeyboardRowViewModel(cells);
         }).ToList();
     }
-
-    // Gap is the space in pixels left of a key. The function row is grouped in
-    // blocks of four (F1-F4, F5-F8, F9-F12) with small gaps between them, F1
-    // sits above "2" and F12 ends where the Backspace key ends.
-    private static readonly (string Name, string Label, double Width, double Gap)[][] KeyLayout =
-    {
-        new (string Name, string Label, double Width, double Gap)[]
-        {
-            ("esc", "Esc", 1.5, 0), ("f1", "F1", 1, 20), ("f2", "F2", 1, 3), ("f3", "F3", 1, 3), ("f4", "F4", 1, 3),
-            ("f5", "F5", 1, 17), ("f6", "F6", 1, 3), ("f7", "F7", 1, 3), ("f8", "F8", 1, 3),
-            ("f9", "F9", 1, 17), ("f10", "F10", 1, 3), ("f11", "F11", 1, 3), ("f12", "F12", 1, 3),
-        },
-        new (string Name, string Label, double Width, double Gap)[]
-        {
-            ("`", "`", 1, 0), ("1", "1", 1, 3), ("2", "2", 1, 3), ("3", "3", 1, 3), ("4", "4", 1, 3), ("5", "5", 1, 3),
-            ("6", "6", 1, 3), ("7", "7", 1, 3), ("8", "8", 1, 3), ("9", "9", 1, 3), ("0", "0", 1, 3), ("-", "-", 1, 3),
-            ("=", "=", 1, 3), ("backspace", "Bksp", 2.0, 3), ("del", "Del", 1, 3),
-        },
-        new (string Name, string Label, double Width, double Gap)[]
-        {
-            ("tab", "Tab", 1.5, 0), ("q", "Q", 1, 3), ("w", "W", 1, 3), ("e", "E", 1, 3), ("r", "R", 1, 3),
-            ("t", "T", 1, 3), ("y", "Y", 1, 3), ("u", "U", 1, 3), ("i", "I", 1, 3), ("o", "O", 1, 3), ("p", "P", 1, 3),
-            ("[", "[", 1, 3), ("]", "]", 1, 3), ("\\", "\\", 1.5, 3), ("pgup", "PgUp", 1, 3),
-        },
-        new (string Name, string Label, double Width, double Gap)[]
-        {
-            ("caps", "Caps", 1.75, 0), ("a", "A", 1, 3), ("s", "S", 1, 3), ("d", "D", 1, 3), ("f", "F", 1, 3),
-            ("g", "G", 1, 3), ("h", "H", 1, 3), ("j", "J", 1, 3), ("k", "K", 1, 3), ("l", "L", 1, 3), (";", ";", 1, 3),
-            ("'", "'", 1, 3), ("enter", "Enter", 2.3571, 3), ("pgdn", "PgDn", 1, 3),
-        },
-        new (string Name, string Label, double Width, double Gap)[]
-        {
-            ("lshift", "Shift", 2.25, 0), ("z", "Z", 1, 3), ("x", "X", 1, 3), ("c", "C", 1, 3), ("v", "V", 1, 3),
-            ("b", "B", 1, 3), ("n", "N", 1, 3), ("m", "M", 1, 3), (",", ",", 1, 3), (".", ".", 1, 3), ("/", "/", 1, 3),
-            ("rshift", "Shift", 1.75, 3), ("up", "↑", 1, 6), ("end", "End", 1, 3),
-        },
-        new (string Name, string Label, double Width, double Gap)[]
-        {
-            ("lctrl", "Ctrl", 1.25, 0), ("lwin", "Win", 1.25, 3), ("lalt", "Alt", 1.25, 3), ("space", "Space", 7.2857, 3),
-            ("fn", "Fn", 1.25, 3), ("rctrl", "Ctrl", 1.25, 3),
-            ("left", "←", 1, 6), ("down", "↓", 1, 3), ("right", "→", 1, 3),
-        },
-    };
 }
 
 public partial class KeyCellViewModel : ObservableObject

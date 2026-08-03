@@ -171,19 +171,18 @@ public static class Program
 
     private static int RunPerKey(PerKeyCommand c)
     {
-        const int LedCount = F75Layout.LedCount;
-
         using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
+        IKeyboardLayout layout = keyboard.Layout;
+        int ledCount = layout.LedCount;
 
-        var colors = new RgbColor[LedCount];
-        for (int i = 0; i < LedCount; i++)
+        var colors = new RgbColor[ledCount];
+        for (int i = 0; i < ledCount; i++)
         {
             colors[i] = new RgbColor(0, 0, 0);
         }
 
         if (c.KeyColors is { Count: > 0 } keyColors)
         {
-            IKeyboardLayout layout = keyboard.Layout;
             foreach ((string key, RgbColor color) in keyColors)
             {
                 int index = layout.GetLedIndex(key);
@@ -197,7 +196,7 @@ public static class Program
 
             if (c.FillAll)
             {
-                for (int i = 0; i < LedCount; i++)
+                for (int i = 0; i < ledCount; i++)
                 {
                     if (colors[i] == default)
                     {
@@ -208,16 +207,16 @@ public static class Program
         }
         else if (c.LedIndex is int led)
         {
-            if (led < 0 || led >= LedCount)
+            if (led < 0 || led >= ledCount)
             {
-                throw new AulaException($"LED index {led} out of range 0-{LedCount - 1}.");
+                throw new AulaException($"LED index {led} out of range 0-{ledCount - 1}.");
             }
 
             colors[led] = c.Color;
         }
         else
         {
-            for (int i = 0; i < LedCount; i++)
+            for (int i = 0; i < ledCount; i++)
             {
                 colors[i] = c.Color;
             }
@@ -230,7 +229,7 @@ public static class Program
             ? string.Join(", ", keys.Select(kv => $"{kv.Key}={kv.Value.ToHex()}"))
             : c.LedIndex is { } idx
                 ? $"LED {idx} = {c.Color.ToHex()}"
-                : $"{LedCount} LEDs = {c.Color.ToHex()}";
+                : $"{ledCount} LEDs = {c.Color.ToHex()}";
         Console.WriteLine($"Applied per-key custom mode ({detail})");
         return 0;
     }

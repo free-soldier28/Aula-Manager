@@ -26,7 +26,7 @@ public sealed class AulaKeyboard : IAulaKeyboard, ISinowealthDiagnostics
 
     public KeyboardCapabilities Capabilities { get; }
 
-    public IKeyboardLayout Layout => F75Layout.Instance;
+    public IKeyboardLayout Layout => Model.Layout;
 
     public ILightingController Lighting { get; }
 
