@@ -50,6 +50,8 @@ public sealed class KeyboardDeviceFactory
     public IAulaKeyboard Open(string? modelId = null) =>
         TryOpen(modelId) ?? throw new AulaDeviceNotFoundException();
 
+    public IReadOnlyList<DeviceInfo> PresentDevices() => _scanner.ScanAll();
+
     private DeviceInfo? PickDevice() =>
-        DevicePicker.PickBest(_scanner.ScanAll());
+        DevicePicker.PickBest(PresentDevices());
 }

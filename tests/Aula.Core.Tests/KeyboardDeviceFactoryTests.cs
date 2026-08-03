@@ -92,6 +92,20 @@ public class KeyboardDeviceFactoryTests
         Assert.Null(factory.TryOpen("f100"));
     }
 
+    [Fact]
+    public void PresentDevices_ReturnsScannedDevices()
+    {
+        var scanner = new FakeScanner();
+        scanner.Devices.Add(F75Device());
+        scanner.Devices.Add(new DeviceInfo(
+            "path://dongle", AulaDeviceIds.VendorWireless, AulaDeviceIds.ProductWireless, "SN", "2.4G Wireless Receiver", 0, 20, 20));
+        var factory = CreateFactory(scanner);
+
+        IReadOnlyList<DeviceInfo> devices = factory.PresentDevices();
+
+        Assert.Equal(2, devices.Count);
+    }
+
     private static KeyboardDeviceFactory CreateFactory(IHidDeviceScanner scanner)
     {
         var registry = new DriverRegistry();
