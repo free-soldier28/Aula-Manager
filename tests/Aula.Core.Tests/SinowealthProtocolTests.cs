@@ -60,6 +60,16 @@ public class SinowealthProtocolTests
     }
 
     [Fact]
+    public void DeviceInfo_And_Model_AreExposed()
+    {
+        var transport = new FakeTransport();
+        var protocol = new SinowealthProtocol(transport, ModelConfig.F75);
+
+        Assert.Same(transport.Info, protocol.DeviceInfo);
+        Assert.Equal("f75", protocol.Model.Id);
+    }
+
+    [Fact]
     public void WriteColorProfile_SendsProfileFrame()
     {
         var transport = new FakeTransport();

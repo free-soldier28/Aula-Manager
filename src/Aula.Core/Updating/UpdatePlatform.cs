@@ -9,14 +9,14 @@ public sealed record UpdatePlatform(
 {
     public static UpdatePlatform Detect() => new(GetOs(), GetArch(), GetRuntimes());
 
-    private static string GetOs()
+    public static string OsName(bool isWindows, bool isMacOs)
     {
-        if (OperatingSystem.IsWindows())
+        if (isWindows)
         {
             return "windows";
         }
 
-        if (OperatingSystem.IsMacOS())
+        if (isMacOs)
         {
             return "macos";
         }
@@ -24,25 +24,23 @@ public sealed record UpdatePlatform(
         return "linux";
     }
 
-    private static string GetArch()
+    public static string ArchName(Architecture architecture) => architecture switch
     {
-        return RuntimeInformation.ProcessArchitecture switch
-        {
-            Architecture.X64 => "x64",
-            Architecture.Arm64 => "arm64",
-            Architecture.X86 => "x86",
-            _ => "any",
-        };
-    }
+        Architecture.X64 => "x64",
+        Architecture.Arm64 => "arm64",
+        Architecture.X86 => "x86",
+        _ => "any",
+    };
 
-    private static string GetRuntimes()
+    public static string RuntimesFor(string os, string arch, string archLower)
     {
         var runtimes = new List<string>();
-        if (OperatingSystem.IsWindows())
+        if (os.StartsWith("win", StringComparison.OrdinalIgnoreCase))
         {
             runtimes.Add("win");
         }
-        else if (OperatingSystem.IsMacOS())
+        else if (os.StartsWith("mac", StringComparison.OrdinalIgnoreCase) ||
+                 os.StartsWith("osx", StringComparison.OrdinalIgnoreCase))
         {
             runtimes.Add("osx");
             runtimes.Add("macos");
@@ -52,9 +50,19 @@ public sealed record UpdatePlatform(
             runtimes.Add("linux");
         }
 
-        runtimes.Add(GetArch());
-        runtimes.Add(RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant());
+        runtimes.Add(arch);
+        runtimes.Add(archLower);
         return string.Join("-", runtimes);
+    }
+
+    private static string GetOs() => OsName(OperatingSystem.IsWindows(), OperatingSystem.IsMacOS());
+
+    private static string GetArch() => ArchName(RuntimeInformation.ProcessArchitecture);
+
+    private static string GetRuntimes()
+    {
+        string os = GetOs();
+        return RuntimesFor(os, GetArch(), RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant());
     }
 
     public bool MatchesAsset(string assetName)

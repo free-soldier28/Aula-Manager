@@ -1,26 +1,29 @@
-using HidSharp;
-
 namespace Aula.Core.Devices;
 
 public sealed class HidDeviceScanner : IHidDeviceScanner
 {
+    private readonly IHidDeviceList _deviceList;
+
+    public HidDeviceScanner(IHidDeviceList? deviceList = null) =>
+        _deviceList = deviceList ?? HidSharpDeviceList.Local;
+
     public IReadOnlyList<DeviceInfo> Scan(int vendorId, int productId)
     {
-        return DeviceList.Local.GetHidDevices(vendorId, productId)
+        return _deviceList.GetHidDevices(vendorId, productId)
             .Select(ToInfo)
             .ToList();
     }
 
     public IReadOnlyList<DeviceInfo> ScanAll()
     {
-        return DeviceList.Local.GetHidDevices()
+        return _deviceList.GetHidDevices()
             .Where(d => (d.VendorID == AulaDeviceIds.VendorSinoWealth && d.ProductID == AulaDeviceIds.ProductF75F87Wired)
                      || (d.VendorID == AulaDeviceIds.VendorWireless && d.ProductID == AulaDeviceIds.ProductWireless))
             .Select(ToInfo)
             .ToList();
     }
 
-    private static DeviceInfo ToInfo(HidDevice d)
+    private static DeviceInfo ToInfo(IHidDevice d)
     {
         string? serial = SafeString(d.GetSerialNumber);
         string? name = SafeString(d.GetProductName);

@@ -24,6 +24,7 @@ public class ProfileServiceTests : IDisposable
             },
             Model: "f75");
 
+        Assert.Equal(_dir, service.DirectoryPath);
         service.Save("gaming", profile);
         KeyboardProfile? loaded = service.Load("gaming");
 

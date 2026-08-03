@@ -7,8 +7,16 @@ public sealed class UpdateInstaller
     private readonly string _currentExecutable;
     private readonly string _currentDirectory;
     private readonly string _stagingDirectory;
+    private readonly Action<ProcessStartInfo> _startProcess;
+    private readonly Func<bool> _isWindows;
+    private readonly Action<string, string> _chmod;
 
-    public UpdateInstaller(string? currentExecutable = null, string? stagingDirectory = null)
+    public UpdateInstaller(
+        string? currentExecutable = null,
+        string? stagingDirectory = null,
+        Action<ProcessStartInfo>? startProcess = null,
+        Func<bool>? isWindows = null,
+        Action<string, string>? chmod = null)
     {
         _currentExecutable = currentExecutable ?? Environment.ProcessPath
             ?? throw new AulaException("Cannot determine the current executable path.");
@@ -16,6 +24,9 @@ public sealed class UpdateInstaller
             ?? throw new AulaException("Cannot determine the application directory.");
         _stagingDirectory = stagingDirectory ?? Path.Combine(
             Path.GetTempPath(), "aula-update", Guid.NewGuid().ToString("N"));
+        _startProcess = startProcess ?? (si => Process.Start(si));
+        _isWindows = isWindows ?? OperatingSystem.IsWindows;
+        _chmod = chmod ?? ((file, args) => Process.Start(file, args)?.WaitForExit());
     }
 
     public string StagingDirectory => _stagingDirectory;
@@ -38,37 +49,39 @@ public sealed class UpdateInstaller
         startInfo.Environment["AULA_CURRENT_EXE"] = _currentExecutable;
         startInfo.Environment["AULA_STAGING"] = _stagingDirectory;
 
-        Process.Start(startInfo);
+        _startProcess(startInfo);
         await Task.CompletedTask.ConfigureAwait(false);
     }
 
-    private string CreateUpdaterScript()
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            string path = Path.Combine(_stagingDirectory, "update.cmd");
-            string body = """
-                @echo off
-                setlocal
-                for %%F in ("%AULA_CURRENT_EXE%") do set "target=%%~dpF"
-                set /a tries=0
-                :wait
-                tasklist /FI "PID eq %AULA_PID%" 2>nul | findstr /I "%AULA_PID%" >nul
-                if not errorlevel 1 (
-                    set /a tries+=1
-                    if %tries% gtr 60 exit /b 1
-                    timeout /t 1 /nobreak >nul
-                    goto wait
-                )
-                copy /Y "%AULA_STAGING%\*" "%target%" >nul
-                if errorlevel 1 exit /b 1
-                del /Q "%AULA_STAGING%" >nul 2>nul
-                start "" "%AULA_CURRENT_EXE%"
-                """;
-            File.WriteAllText(path, body);
-            return path;
-        }
+    private string CreateUpdaterScript() => _isWindows() ? CreateWindowsScript() : CreateUnixScript();
 
+    internal string CreateWindowsScript()
+    {
+        string path = Path.Combine(_stagingDirectory, "update.cmd");
+        string body = """
+            @echo off
+            setlocal
+            for %%F in ("%AULA_CURRENT_EXE%") do set "target=%%~dpF"
+            set /a tries=0
+            :wait
+            tasklist /FI "PID eq %AULA_PID%" 2>nul | findstr /I "%AULA_PID%" >nul
+            if not errorlevel 1 (
+                set /a tries+=1
+                if %tries% gtr 60 exit /b 1
+                timeout /t 1 /nobreak >nul
+                goto wait
+            )
+            copy /Y "%AULA_STAGING%\*" "%target%" >nul
+            if errorlevel 1 exit /b 1
+            del /Q "%AULA_STAGING%" >nul 2>nul
+            start "" "%AULA_CURRENT_EXE%"
+            """;
+        File.WriteAllText(path, body);
+        return path;
+    }
+
+    internal string CreateUnixScript()
+    {
         string sh = Path.Combine(_stagingDirectory, "update.sh");
         string shBody = """
             #!/bin/sh
@@ -84,7 +97,7 @@ public sealed class UpdateInstaller
             "$AULA_CURRENT_EXE" &
             """;
         File.WriteAllText(sh, shBody);
-        Process.Start("chmod", $"+x \"{sh}\"").WaitForExit();
+        _chmod(sh, $"+x \"{sh}\"");
         return sh;
     }
 }

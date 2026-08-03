@@ -1,15 +1,19 @@
 using Aula.Core.Abstractions;
 using Aula.Core.Devices;
 using Aula.Core.Protocol;
-using HidSharp;
 
 namespace Aula.Core.Drivers;
 
 public sealed class HidSharpTransportFactory : ITransportFactory
 {
+    private readonly IHidDeviceList _deviceList;
+
+    public HidSharpTransportFactory(IHidDeviceList? deviceList = null) =>
+        _deviceList = deviceList ?? HidSharpDeviceList.Local;
+
     public IHidTransport Create(DeviceInfo device)
     {
-        HidDevice hidDevice = DeviceList.Local.GetHidDevices()
+        IHidDevice hidDevice = _deviceList.GetHidDevices()
             .FirstOrDefault(d => d.DevicePath == device.DevicePath)
             ?? throw new AulaDeviceNotFoundException();
 

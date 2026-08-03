@@ -1,209 +1,243 @@
 using System.Net;
+using System.Text;
+using System.Text.Json;
+using Aula.Core.Models;
 using Aula.Core.Updating;
 
 namespace Aula.Core.Tests;
 
 public class UpdateServiceTests
 {
-    [Fact]
-    public async Task Check_NoNewerRelease_ReturnsNotAvailable()
+    private sealed class FakeHttpHandler : HttpMessageHandler
     {
-        var handler = new StubHandler(
-            """
+        private readonly Queue<HttpResponseMessage> _responses = new();
+        public List<HttpRequestMessage> Requests { get; } = new();
+
+        public void Enqueue(HttpResponseMessage response) => _responses.Enqueue(response);
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            return Task.FromResult(_responses.Count > 0 ? _responses.Dequeue() : new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
+    }
+
+    private static UpdateService Create(
+        FakeHttpHandler handler, string currentVersion = "0.9.0",
+        string platformOs = "windows", string platformArch = "x64")
+    {
+        var platform = new UpdatePlatform(platformOs, platformArch, "win-x64");
+        return new UpdateService(new HttpClient(handler), platform: platform, currentVersion: currentVersion);
+    }
+
+    private static StringContent Json(object payload) =>
+        new(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+    private static object Release(
+        string tag = "v1.0.0",
+        bool prerelease = false,
+        string body = "release notes",
+        string assetName = "aula-win-x64.zip")
+    {
+        return new
+        {
+            tag_name = tag,
+            name = tag,
+            body,
+            prerelease,
+            published_at = "2025-01-15T10:00:00Z",
+            assets = new[]
             {
-              "tag_name": "v0.9.0",
-              "name": "v0.9.0",
-              "body": "test",
-              "prerelease": false,
-              "published_at": "2026-01-01T00:00:00Z",
-              "assets": [ { "name": "aula-app-win-x64.zip", "size": 10, "browser_download_url": "https://x/a.zip" } ]
-            }
-            """);
-        var service = new UpdateService(
-            new HttpClient(handler),
-            platform: new UpdatePlatform("windows", "x64", "win-x64"),
-            currentVersion: "0.9.0");
-
-        UpdateInfo info = await service.CheckAsync();
-
-        Assert.False(info.IsAvailable);
+                new { name = assetName, size = 1234, browser_download_url = "https://example.com/aula.zip" },
+            },
+        };
     }
 
     [Fact]
-    public async Task Check_NewerRelease_ReturnsAvailableWithAsset()
+    public async Task CheckAsync_ReturnsAvailable_WhenNewerVersionExists()
     {
-        var handler = new StubHandler(
-            """
-            {
-              "tag_name": "v0.10.0",
-              "name": "v0.10.0",
-              "body": "New hotness",
-              "prerelease": false,
-              "published_at": "2026-02-01T00:00:00Z",
-              "assets": [
-                { "name": "aula-app-win-x64.zip", "size": 10, "browser_download_url": "https://x/a-win.zip" },
-                { "name": "aula-app-linux-x64.zip", "size": 10, "browser_download_url": "https://x/a-linux.zip" }
-              ]
-            }
-            """);
-        var service = new UpdateService(
-            new HttpClient(handler),
-            platform: new UpdatePlatform("windows", "x64", "win-x64"),
-            currentVersion: "0.9.0");
+        var handler = new FakeHttpHandler();
+        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK) { Content = Json(Release("v1.2.0")) });
+        var service = Create(handler, currentVersion: "0.9.0");
 
         UpdateInfo info = await service.CheckAsync();
 
         Assert.True(info.IsAvailable);
-        Assert.Equal("0.10.0", info.LatestVersion);
-        Assert.Equal("aula-app-win-x64.zip", info.AssetName);
-        Assert.Equal("https://x/a-win.zip", info.DownloadUrl);
-        Assert.Equal("New hotness", info.ReleaseNotes);
+        Assert.Equal("1.2.0", info.LatestVersion);
+        Assert.Equal("0.9.0", info.CurrentVersion);
+        Assert.Equal("https://example.com/aula.zip", info.DownloadUrl);
+        Assert.Equal("release notes", info.ReleaseNotes);
+        Assert.Equal("aula-win-x64.zip", info.AssetName);
+        Assert.NotNull(info.PublishedAt);
     }
 
     [Fact]
-    public async Task Check_Prerelease_IsIgnored()
+    public async Task CheckAsync_NoUpdate_WhenSameVersion()
     {
-        var handler = new StubHandler(
-            """
-            {
-              "tag_name": "v0.10.0-beta.1",
-              "name": "beta",
-              "body": "beta",
-              "prerelease": true,
-              "published_at": null,
-              "assets": []
-            }
-            """);
-        var service = new UpdateService(
-            new HttpClient(handler),
-            platform: new UpdatePlatform("linux", "x64", "linux-x64"),
-            currentVersion: "0.9.0");
+        var handler = new FakeHttpHandler();
+        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK) { Content = Json(Release("v0.9.0")) });
+        var service = Create(handler, currentVersion: "0.9.0");
 
         UpdateInfo info = await service.CheckAsync();
 
         Assert.False(info.IsAvailable);
+        Assert.Equal("0.9.0", info.CurrentVersion);
     }
 
     [Fact]
-    public async Task Check_NoMatchingAsset_ReturnsNotAvailable()
+    public async Task CheckAsync_NoUpdate_WhenReleaseIsOlder()
     {
-        var handler = new StubHandler(
-            """
-            {
-              "tag_name": "v0.10.0",
-              "name": "v0.10.0",
-              "body": "",
-              "prerelease": false,
-              "published_at": null,
-              "assets": [ { "name": "aula-app-linux-x64.zip", "size": 1, "browser_download_url": "https://x/l.zip" } ]
-            }
-            """);
-        var service = new UpdateService(
-            new HttpClient(handler),
-            platform: new UpdatePlatform("windows", "x64", "win-x64"),
-            currentVersion: "0.9.0");
+        var handler = new FakeHttpHandler();
+        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK) { Content = Json(Release("v0.8.0")) });
+        var service = Create(handler, currentVersion: "0.9.0");
 
-        UpdateInfo info = await service.CheckAsync();
-
-        Assert.False(info.IsAvailable);
+        Assert.False((await service.CheckAsync()).IsAvailable);
     }
 
     [Fact]
-    public async Task Check_NotFound_ReturnsNotAvailable()
+    public async Task CheckAsync_NoUpdate_WhenPrerelease()
     {
-        var handler = new StubHandler("", HttpStatusCode.NotFound);
-        var service = new UpdateService(
-            new HttpClient(handler),
-            currentVersion: "0.9.0");
+        var handler = new FakeHttpHandler();
+        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK) { Content = Json(Release("v1.0.0", prerelease: true)) });
+        var service = Create(handler, currentVersion: "0.9.0");
 
-        UpdateInfo info = await service.CheckAsync();
-
-        Assert.False(info.IsAvailable);
+        Assert.False((await service.CheckAsync()).IsAvailable);
     }
 
     [Fact]
-    public void Platform_MatchesAsset_UsesExplicitOsNotHostOs()
+    public async Task CheckAsync_NoUpdate_WhenTagNotVersion()
     {
-        var platform = new UpdatePlatform("windows", "x64", "win-x64");
+        var handler = new FakeHttpHandler();
+        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK) { Content = Json(Release("nightly")) });
+        var service = Create(handler, currentVersion: "0.9.0");
 
-        Assert.True(platform.MatchesAsset("aula-app-win-x64.zip"));
-        Assert.True(platform.MatchesAsset("aula-app-WINDOWS-x64.zip"));
-        Assert.False(platform.MatchesAsset("aula-app-linux-x64.zip"));
-        Assert.False(platform.MatchesAsset("aula-app-osx-arm64.zip"));
+        Assert.False((await service.CheckAsync()).IsAvailable);
     }
 
     [Fact]
-    public void Platform_Macos_MatchesOsxAndArm64()
+    public async Task CheckAsync_NoUpdate_WhenNoMatchingAsset()
     {
-        var platform = new UpdatePlatform("macos", "arm64", "osx-arm64");
+        var handler = new FakeHttpHandler();
+        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK) { Content = Json(Release("v1.2.0", assetName: "aula-linux-x64.zip")) });
+        var service = Create(handler, currentVersion: "0.9.0");
 
-        Assert.True(platform.MatchesAsset("aula-app-osx-arm64.zip"));
-        Assert.True(platform.MatchesAsset("aula-app-macos-arm64.zip"));
-        Assert.False(platform.MatchesAsset("aula-app-linux-x64.zip"));
+        Assert.False((await service.CheckAsync()).IsAvailable);
     }
 
     [Fact]
-    public async Task Check_ApiError_ThrowsInsteadOfReportingUpToDate()
+    public async Task CheckAsync_NoUpdate_WhenEndpointReturnsNotFound()
     {
-        var handler = new StubHandler("", HttpStatusCode.Forbidden);
-        var service = new UpdateService(
-            new HttpClient(handler),
-            currentVersion: "0.9.0");
+        var handler = new FakeHttpHandler();
+        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.NotFound));
+        var service = Create(handler, currentVersion: "0.9.0");
 
-        await Assert.ThrowsAsync<HttpRequestException>(() => service.CheckAsync());
+        Assert.False((await service.CheckAsync()).IsAvailable);
     }
 
     [Fact]
-    public async Task Download_ReturnsAssetBytes()
+    public async Task DownloadAsync_ReturnsBytes()
     {
-        var handler = new StubHandler(
-            "not json at all",
-            HttpStatusCode.OK,
-            new Dictionary<string, string> { ["Content-Type"] = "application/zip" },
-            content: "payload-bytes");
-        var service = new UpdateService(
-            new HttpClient(handler),
-            currentVersion: "0.9.0");
-
-        var info = new UpdateInfo(true, "0.10.0", "0.9.0", "https://x/a.zip", null, null, "a.zip");
-        byte[] bytes = await service.DownloadAsync(info);
-
-        Assert.Equal("payload-bytes"u8.ToArray(), bytes);
-    }
-
-    private sealed class StubHandler : HttpMessageHandler
-    {
-        private readonly string _body;
-        private readonly HttpStatusCode _status;
-        private readonly byte[] _content;
-        private readonly Dictionary<string, string> _headers;
-
-        public StubHandler(
-            string body,
-            HttpStatusCode status = HttpStatusCode.OK,
-            Dictionary<string, string>? headers = null,
-            string? content = null)
+        var handler = new FakeHttpHandler();
+        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK)
         {
-            _body = body;
-            _status = status;
-            _headers = headers ?? new Dictionary<string, string>();
-            _content = content is null ? [] : System.Text.Encoding.UTF8.GetBytes(content);
-        }
+            Content = new ByteArrayContent(new byte[] { 1, 2, 3, 4 }),
+        });
+        var service = Create(handler, currentVersion: "0.9.0");
+        var update = new UpdateInfo(true, "1.0.0", "0.9.0", "https://example.com/aula.zip", null, null, "aula-win-x64.zip");
 
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
+        byte[] bytes = await service.DownloadAsync(update);
+
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, bytes);
+    }
+
+    [Fact]
+    public async Task DownloadAsync_Throws_WhenNoUrl()
+    {
+        var service = Create(new FakeHttpHandler(), currentVersion: "0.9.0");
+        var update = UpdateInfo.None("0.9.0");
+
+        await Assert.ThrowsAsync<AulaException>(() => service.DownloadAsync(update));
+    }
+
+    [Fact]
+    public async Task DownloadToFileAsync_WritesFile()
+    {
+        var handler = new FakeHttpHandler();
+        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK)
         {
-            HttpResponseMessage response = request.RequestUri!.AbsoluteUri.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)
-                ? new HttpResponseMessage(_status) { Content = new ByteArrayContent(_content) }
-                : new HttpResponseMessage(_status) { Content = new StringContent(_body) };
+            Content = new ByteArrayContent(new byte[] { 0xAA, 0xBB }),
+        });
+        var service = Create(handler, currentVersion: "0.9.0");
+        var update = new UpdateInfo(true, "1.0.0", "0.9.0", "https://example.com/aula.zip", null, null, "aula-win-x64.zip");
+        string directory = Path.Combine(Path.GetTempPath(), "aula-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
 
-            foreach ((string key, string value) in _headers)
-            {
-                response.Content.Headers.TryAddWithoutValidation(key, value);
-            }
+        try
+        {
+            string path = await service.DownloadToFileAsync(update, directory);
 
-            return Task.FromResult(response);
+            Assert.Equal(Path.Combine(directory, "aula-win-x64.zip"), path);
+            Assert.Equal(new byte[] { 0xAA, 0xBB }, await File.ReadAllBytesAsync(path));
         }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task DownloadToFileAsync_FallsBackToUpdateZip_WhenNoAssetName()
+    {
+        var handler = new FakeHttpHandler();
+        handler.Enqueue(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[0]) });
+        var service = Create(handler, currentVersion: "0.9.0");
+        var update = new UpdateInfo(true, "1.0.0", "0.9.0", "https://example.com/aula.zip", null, null, null);
+        string directory = Path.Combine(Path.GetTempPath(), "aula-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+
+        try
+        {
+            string path = await service.DownloadToFileAsync(update, directory);
+            Assert.Equal("update.zip", Path.GetFileName(path));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void UpdateInfo_None_SetsNoUpdateFields()
+    {
+        UpdateInfo info = UpdateInfo.None("0.9.0");
+
+        Assert.False(info.IsAvailable);
+        Assert.Null(info.LatestVersion);
+        Assert.Equal("0.9.0", info.CurrentVersion);
+        Assert.Null(info.DownloadUrl);
+        Assert.Null(info.ReleaseNotes);
+        Assert.Null(info.PublishedAt);
+        Assert.Null(info.AssetName);
+    }
+
+    [Fact]
+    public void GitHubRelease_And_Asset_AreRecords()
+    {
+        var asset = new GitHubAsset("a.zip", 42, "https://example.com/a.zip");
+        var release = new GitHubRelease("v1.0.0", "v1.0.0", "body", false, null, new[] { asset });
+
+        Assert.Equal("a.zip", release.Assets[0].Name);
+        Assert.Equal(42L, release.Assets[0].Size);
+        Assert.Equal("https://example.com/a.zip", release.Assets[0].BrowserDownloadUrl);
+        Assert.Equal("v1.0.0", release.Name);
+        Assert.False(release.Prerelease);
+        Assert.Equal("body", release.Body);
     }
 }

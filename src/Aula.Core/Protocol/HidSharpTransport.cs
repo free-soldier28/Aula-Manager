@@ -1,15 +1,14 @@
 using Aula.Core.Devices;
-using HidSharp;
 
 namespace Aula.Core.Protocol;
 
 public sealed class HidSharpTransport : IHidTransport
 {
-    private readonly HidDevice _device;
-    private HidStream? _stream;
+    private readonly IHidDevice _device;
+    private IHidStream? _stream;
     private bool _open;
 
-    public HidSharpTransport(HidDevice device) => _device = device;
+    public HidSharpTransport(IHidDevice device) => _device = device;
 
     public DeviceInfo Info
     {

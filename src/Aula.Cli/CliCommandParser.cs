@@ -428,15 +428,8 @@ public static class CliCommandParser
 
         if (hex.Length == 6 && hex.All(Uri.IsHexDigit))
         {
-            try
-            {
-                color = RgbColor.FromHex("#" + hex);
-                return true;
-            }
-            catch (FormatException)
-            {
-                // fall through to false
-            }
+            color = RgbColor.FromHex("#" + hex);
+            return true;
         }
 
         key = string.Empty;
