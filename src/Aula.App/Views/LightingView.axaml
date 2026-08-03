@@ -2,21 +2,35 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Aula.App.ViewModels"
              xmlns:models="using:Aula.Core.Models"
-xmlns:cp="using:Avalonia.Controls.Primitives"
+             xmlns:cp="using:Avalonia.Controls.Primitives"
              x:Class="Aula.App.Views.LightingView"
              x:DataType="vm:LightingViewModel"
              Padding="16">
 
     <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 12">
+            <TextBlock Text="Profile:" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <TextBox Width="160" Watermark="new profile name"
+                     Text="{Binding NewProfileName}" VerticalAlignment="Center" />
+            <Button Content="Save" Command="{Binding SaveProfileCommand}" Classes="accent" />
+            <ComboBox Width="160" ItemsSource="{Binding ProfilesList}"
+                      SelectedItem="{Binding SelectedProfile}" VerticalAlignment="Center" />
+            <Button Content="Apply" Command="{Binding ApplyProfileCommand}" />
+            <Button Content="Delete" Command="{Binding DeleteProfileCommand}" />
+            <Button Content="Refresh" Command="{Binding RefreshProfilesCommand}" />
+        </StackPanel>
+
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0 12 0 0">
             <Button Content="Read" Command="{Binding ReadCommand}" />
             <Button Content="Apply" Command="{Binding ApplyCommand}" Classes="accent" />
             <Button Content="Off" Command="{Binding TurnOffCommand}" />
+            <Button Content="Fill all" Command="{Binding FillAllCommand}" />
+            <Button Content="Clear" Command="{Binding ClearAllCommand}" />
             <Button Content="Reload device" Command="{Binding ReloadDeviceCommand}" />
             <TextBlock Text="{Binding Message}" VerticalAlignment="Center" Foreground="Gray" Margin="8 0 0 0" />
         </StackPanel>
 
-        <Grid ColumnDefinitions="260,24,2*,*" RowDefinitions="*">
+        <Grid ColumnDefinitions="260,2*,*" RowDefinitions="*">
             <StackPanel Grid.Column="0" Spacing="8">
                 <TextBlock Text="Effect" FontWeight="SemiBold" />
                 <ComboBox ItemsSource="{Binding EffectItems}"
@@ -36,6 +50,42 @@ xmlns:cp="using:Avalonia.Controls.Primitives"
                           IsVisible="{Binding HasColor}" />
             </StackPanel>
 
+            <ScrollViewer Grid.Column="1" Margin="16 0 0 0"
+                          HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Border BorderBrush="#333333" BorderThickness="1" CornerRadius="8" Padding="12" Background="#202020"
+                        HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:KeyboardRowViewModel">
+                                <StackPanel Orientation="Horizontal" Spacing="3" Margin="0 3">
+                                    <ItemsControl ItemsSource="{Binding Keys}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:KeyCellViewModel">
+                                                <Button Margin="{Binding Margin}" Width="{Binding PixelWidth}" Height="30" Padding="0"
+                                                        Background="{Binding Background}"
+                                                        BorderBrush="{Binding SelectedBorder}"
+                                                        BorderThickness="{Binding BorderSize}"
+                                                        Foreground="{Binding Foreground}"
+                                                        Command="{Binding SelectCommand}">
+                                                    <TextBlock Text="{Binding Label}" FontSize="10"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </ScrollViewer>
+
             <StackPanel Grid.Column="2" Margin="16 0 0 0" Spacing="8"
                         IsVisible="{Binding HasColor}">
                 <TextBlock Text="Color" FontWeight="SemiBold" />
@@ -43,9 +93,10 @@ xmlns:cp="using:Avalonia.Controls.Primitives"
                                   HsvColor="{Binding WheelColor}"
                                   Shape="Ring"
                                   HorizontalAlignment="Left" />
-                <Border Width="64" Height="64" CornerRadius="8" HorizontalAlignment="Left">
-                    <TextBlock Text="{Binding ColorHex}" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Border Width="64" Height="64" CornerRadius="8" Background="{Binding PreviewBrush}" BorderBrush="#444444" BorderThickness="1" />
+                    <TextBlock Text="{Binding ColorHex}" FontFamily="Cascadia Mono, Consolas" VerticalAlignment="Center" />
+                </StackPanel>
 
                 <TextBlock Text="Palette" FontWeight="SemiBold" Margin="0 8 0 0" />
                 <ItemsControl ItemsSource="{Binding Palette}">
@@ -63,6 +114,8 @@ xmlns:cp="using:Avalonia.Controls.Primitives"
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <TextBlock Text="Click a key to paint it with the selected color (custom effect 21)." FontSize="11" Foreground="Gray" Margin="0 12 0 0" TextWrapping="Wrap" />
             </StackPanel>
         </Grid>
     </DockPanel>

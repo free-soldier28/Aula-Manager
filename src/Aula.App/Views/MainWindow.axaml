@@ -30,12 +30,6 @@
             <TabItem Header="Lighting" IsEnabled="{Binding IsDeviceConnected}">
                 <views:LightingView DataContext="{Binding Lighting}" />
             </TabItem>
-            <TabItem Header="Per-Key" IsEnabled="{Binding IsDeviceConnected}">
-                <views:PerKeyView DataContext="{Binding PerKey}" />
-            </TabItem>
-            <TabItem Header="Profiles" IsEnabled="{Binding IsDeviceConnected}">
-                <views:ProfilesView DataContext="{Binding Profiles}" />
-            </TabItem>
         </TabControl>
     </DockPanel>
 </Window>
