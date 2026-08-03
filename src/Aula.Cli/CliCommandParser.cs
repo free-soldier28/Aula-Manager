@@ -28,6 +28,8 @@ public sealed record EffectCommand(
 
 public sealed record OffCommand(string Model) : CliCommand;
 
+public sealed record ResetCommand(string Model, string? VendorPath = null) : CliCommand;
+
 public sealed record DumpCommand(string Model) : CliCommand;
 
 public sealed record PerKeyCommand(
@@ -93,12 +95,40 @@ public static class CliCommandParser
             case "off":
                 return new OffCommand(GetModel(rest));
 
+            case "reset":
+                return ParseReset(rest);
+
             case "effect":
                 return ParseEffect(rest);
 
             default:
                 throw new CliParseException($"Unknown command '{verb}'. Run 'aula help' for usage.");
         }
+    }
+
+    private static ResetCommand ParseReset(string[] args)
+    {
+        string model = "f75";
+        string? vendorPath = null;
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            string arg = args[i];
+            switch (arg.ToLowerInvariant())
+            {
+                case "--model":
+                case "-m":
+                    model = Next(args, ref i, arg);
+                    break;
+                case "--vendor":
+                    vendorPath = Next(args, ref i, arg);
+                    break;
+                default:
+                    throw new CliParseException($"Unknown option '{arg}' for reset.");
+            }
+        }
+
+        return new ResetCommand(model, vendorPath);
     }
 
     private static EffectCommand ParseEffect(string[] args)

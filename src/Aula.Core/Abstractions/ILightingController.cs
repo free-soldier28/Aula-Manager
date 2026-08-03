@@ -11,6 +11,8 @@ public interface ILightingController
 
     void TurnOff();
 
+    void Reset();
+
     LedEffect? FindEffect(int id);
 
     LedEffect? FindEffect(string name);

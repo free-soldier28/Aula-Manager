@@ -42,6 +42,7 @@ public static class Program
         EffectsCommand c => RunEffects(c),
         EffectCommand c => RunEffect(c),
         OffCommand c => RunEffect(new EffectCommand(c.Model, 0, null, null, null, false)),
+        ResetCommand c => RunReset(c),
         PerKeyCommand c => RunPerKey(c),
         ProfileCommand c => RunProfile(c),
         UpdateCommand c => RunUpdate(c).GetAwaiter().GetResult(),
@@ -111,9 +112,66 @@ public static class Program
         return 0;
     }
 
+    private static int RunReset(ResetCommand c)
+    {
+        if (!string.IsNullOrWhiteSpace(c.VendorPath))
+        {
+            return RunVendorReset(c.VendorPath);
+        }
+
+        using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
+        keyboard.Lighting.Reset();
+        Console.WriteLine($"Reset lighting config to factory defaults (static white, custom mode off).");
+        return 0;
+    }
+
+    private static int RunVendorReset(string vendorPath)
+    {
+        string full = Path.GetFullPath(vendorPath);
+        if (!File.Exists(full) && Directory.Exists(full))
+        {
+            var candidates = Directory.GetFiles(full, "*.exe", SearchOption.TopDirectoryOnly);
+            if (candidates.Length == 0)
+            {
+                Console.Error.WriteLine($"error: no reset tool (.exe) found in: {full}");
+                return 1;
+            }
+
+            full = candidates[0];
+        }
+
+        if (!File.Exists(full))
+        {
+            Console.Error.WriteLine($"error: reset tool not found: {full}");
+            return 1;
+        }
+
+        Console.WriteLine($"Launching official reset tool: {full}");
+        Console.WriteLine("Follow the tool's on-screen steps. Complete it to fully restore the keyboard.");
+        try
+        {
+            using var process = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo(full)
+                {
+                    UseShellExecute = true,
+                },
+            };
+            process.Start();
+            process.WaitForExit();
+            Console.WriteLine($"Reset tool exited with code {process.ExitCode}.");
+            return process.ExitCode;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"error: cannot launch reset tool: {ex.Message}");
+            return 1;
+        }
+    }
+
     private static int RunPerKey(PerKeyCommand c)
     {
-        const int LedCount = 126;
+        const int LedCount = F75Layout.LedCount;
 
         using IAulaKeyboard keyboard = OpenKeyboard(c.Model);
 
@@ -372,6 +430,9 @@ public static class Program
                      [--colorful]       rainbow/colorful mode
                      [--model ID]
               off [--model ID]       Turn lighting off
+              reset [--model ID]     Reset lighting config to factory defaults
+              reset --vendor <path>  Run the official AULA reset tool (full restore)
+                     [--model ID]
               perkey                Set per-key colors (custom mode)
                      [--color #RRGGBB]  fill base color (also: --color R G B)
                      [--fill-all]       fill all LEDs with base color

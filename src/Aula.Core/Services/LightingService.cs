@@ -66,6 +66,23 @@ public sealed class LightingService : ILightingController
         }
     }
 
+    public void Reset()
+    {
+        byte[] raw = _protocol.ReadConfigRaw();
+
+        raw[_model.CustomModeOffset] = 0x00;
+        raw[_model.EffectIdOffset] = 0x01;
+        raw[_model.SideLightOffset] = 0x00;
+        raw[_model.BatteryLightOffset] = 0x00;
+
+        int paramBase = _model.EffectParamsBase + _model.EffectParamsStride * 1;
+        raw[paramBase] = 0x09;
+        raw[paramBase + 1] = 0x00;
+
+        _protocol.WriteConfigRaw(raw);
+        _protocol.WriteColorProfile(RgbColor.FromRgb(255, 255, 255));
+    }
+
     public void TurnOff() => Apply(new LightingConfig(EffectId: 0));
 
     public LedEffect? FindEffect(int id) => _model.Effects.FirstOrDefault(e => e.Id == id);

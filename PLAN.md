@@ -160,9 +160,30 @@ AulaManager.slnx
 - [x] **2.4 GHz dongle supported with no code changes:** VID `258A:010C` (Compx CX-98090), the same feature-report frame 06 protocol. Verified on hardware: pattern, effect, off, dump, profile work via the dongle. In `docs/PROTOCOL.md` — currently the same.
 - [x] **Bluetooth — verified as NOT supported by the field:** Classic BR/EDR (not BLE), BT HID VID `258A:010C` protocol reaches all Bluetooth; `MaxFeatureReportLength = 0` → no `SET_FEATURE`/`GET_FEATURE` → lighting protocol physically unreachable.
 - [x] Practical documented: backlight only for **wired or 2.4 GHz**.
+- [x] **Recovery / factory reset:** `aula reset` restores only the lighting config region
+  (`00 00 01 00`); a lost keyboard input (matrix) is NOT fixed by it. The official AULA
+  reset tool (`F75reset.exe`, same `HidD_SetFeature` frame protocol, not a flasher) fully
+  restores the board. CLI: `aula reset --vendor <dir|exe>`. Field-verified: only the official
+  tool restored typing after the lighting-only reset failed.
 - [ ] **Reverse engineering BT (planned):**
   - [ ] Capture classic HID traffic (Frida / btmon / Wireshark + Bumble/HCI) on a live keyboard in BT mode
   - [ ] Explore control channel **L2CAP PSM 0x11** (unsegmented) for vendor commands
   - [ ] Probe proprietary GATT services (`0xFF*`) through a low-level BLE scanner if a BLE mode "AULA-F75 5.0 KB" exists
   - [ ] Check for a dedicated transport interface (analog of `IHidTransport`) → `SinoWealthFeatureDriver` without a feature report
   - [ ] **Acceptance criterion:** at least one command (e.g. `effect wave`) is delivered to the keyboard via BT and applied; or formally close BT as unimplementable
+
+### Phase 14. Deep reset via vendor traffic capture (planned) 🔜
+Goal: replace the `aula reset --vendor <exe>` fallback with a native `aula reset` that performs the same full restore by replicating the official `F75reset.exe` feature-report sequence. The tool uses `HidD_SetFeature` (report id 6, 520-byte frames) — the same protocol, not a flasher, so its commands are observable on the USB bus.
+- [ ] **Capture:** Wireshark + **USBPcap** on the USB host controller; run the reset in `F75reset.exe` while capturing.
+  - [ ] Filter selection: device VID `258A:010C`, interface with `MaxFeatureReportLength = 520`.
+  - [ ] Isolate `SET_REPORT` control transfers (bRequest `0x09`, `wValue` low byte = report id `0x06` → `wValue=0x0606`), i.e. the 520-byte `06 …`outbound frames.
+  - [ ] Save dump as `pcapng` in this repo (`docs/captures/f75-vendor-reset.pcapng`) for reproducibility.
+- [ ] **Parser tooling:** CLI `aula capture` (or a script) that reads the `pcapng` and:
+  - [ ] extracts all feature `SET_REPORT`/`GET_REPORT` frames to the AULA device,
+  - [ ] maps each 520-byte frame into our `F75Report.Create*` shape (echo `CMD`, address `A0-A3`, `L0/L1`, data),
+  - [ ] prints a readable command log (`06 82 model query`, `06 04 … write config`, `06 0a …`, …) to diff against `SinowealthProtocol`.
+- [ ] **Map the reset sequence:** identify the exact command frameS the tool sends and what differs from our `LightingService.Reset()` (suspect: it rewrites more/full-of-config region and re-enables the keyboard matrix, not just lighting).
+- [ ] **Implement native reset:** extend `LightingService.Reset()` (or a new `IKeyboardDriver`-level reset) to replay the captured sequence; verify on hardware that typing is restored without the vendor tool.
+- [ ] **Tests:** "golden" captured frames as unit tests; fall back to `--vendor` when capture is unavailable.
+- [ ] **Acceptance criterion:** `aula reset` (no `--vendor`) restores typing on a live F75, and the captured frames are documented in `docs/PROTOCOL.md`.
+- [ ] Document findings in `docs/PROTOCOL.md` + this plan updated to ✅.
