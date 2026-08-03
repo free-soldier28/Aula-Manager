@@ -36,6 +36,22 @@ public class KeyboardDeviceFactoryTests
     }
 
     [Fact]
+    public void TryOpen_OpensKeyboardOverWirelessDongle()
+    {
+        var scanner = new FakeScanner();
+        scanner.Devices.Add(new DeviceInfo(
+            "path://dongle", AulaDeviceIds.VendorWireless, AulaDeviceIds.ProductWireless, "SN", "2.4G Wireless Receiver", 0, 20, 20));
+        var factory = CreateFactory(scanner);
+
+        using IAulaKeyboard? keyboard = factory.TryOpen();
+
+        Assert.NotNull(keyboard);
+        Assert.Equal("f75", keyboard.Model.Id);
+        Assert.True(keyboard.Capabilities.HasWireless);
+        Assert.True(keyboard.Capabilities.HasPerKeyRgb);
+    }
+
+    [Fact]
     public void Open_Throws_WhenNoDevice()
     {
         var factory = CreateFactory(new FakeScanner());
@@ -60,6 +76,7 @@ public class KeyboardDeviceFactoryTests
         var registry = new DriverRegistry();
         registry.Register(new SinoWealthFeatureDriver(ModelConfig.F75, new FakeTransportFactory()));
         registry.Register(new SinoWealthFeatureDriver(ModelConfig.F87, new FakeTransportFactory()));
+        registry.Register(new WirelessSinoWealthDriver(ModelConfig.F75, new FakeTransportFactory()));
         return new KeyboardDeviceFactory(scanner, registry);
     }
 }

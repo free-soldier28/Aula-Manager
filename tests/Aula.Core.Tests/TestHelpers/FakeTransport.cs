@@ -31,6 +31,21 @@ public sealed class FakeTransport : IHidTransport
         Array.Copy(response, 0, buffer, 0, Math.Min(response.Length, buffer.Length));
     }
 
+    public void WriteOutput(byte[] buffer) => Sent.Add((byte[])buffer.Clone());
+
+    public int ReadInput(byte[] buffer, int timeoutMs)
+    {
+        if (Responses.Count == 0)
+        {
+            return 0;
+        }
+
+        byte[] response = Responses.Dequeue();
+        Array.Clear(buffer, 0, buffer.Length);
+        Array.Copy(response, 0, buffer, 0, Math.Min(response.Length, buffer.Length));
+        return response.Length;
+    }
+
     public void Dispose() => Close();
 
     public byte[] LastSent() => Sent[^1];

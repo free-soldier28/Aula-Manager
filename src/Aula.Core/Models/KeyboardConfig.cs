@@ -1,6 +1,6 @@
 namespace Aula.Core.Models;
 
-public sealed class KeyboardConfig
+public class KeyboardConfig
 {
     private const byte CmdReadConfig = 0x84;
 
@@ -15,15 +15,15 @@ public sealed class KeyboardConfig
 
     public byte[] Raw => _raw;
 
-    public int EffectId => _raw[_model.EffectIdOffset];
+    public virtual int EffectId => _raw[_model.EffectIdOffset];
 
-    public bool CustomMode => _raw[_model.CustomModeOffset] == 0x01;
+    public virtual bool CustomMode => _raw[_model.CustomModeOffset] == 0x01;
 
-    public int SideLightEffect => _raw[_model.SideLightOffset];
+    public virtual int SideLightEffect => _raw[_model.SideLightOffset];
 
-    public int BatteryLightEffect => _raw[_model.BatteryLightOffset];
+    public virtual int BatteryLightEffect => _raw[_model.BatteryLightOffset];
 
-    public EffectParams? GetParams(int effectId)
+    public virtual EffectParams? GetParams(int effectId)
     {
         if (effectId < 1)
         {

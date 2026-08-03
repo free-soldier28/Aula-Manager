@@ -15,4 +15,8 @@ public interface IHidTransport : IDisposable
     void SetFeature(byte[] buffer);
 
     void GetFeature(byte[] buffer);
+
+    void WriteOutput(byte[] buffer);
+
+    int ReadInput(byte[] buffer, int timeoutMs);
 }

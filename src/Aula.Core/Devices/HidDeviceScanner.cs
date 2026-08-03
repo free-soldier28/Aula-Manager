@@ -25,7 +25,9 @@ public sealed class HidDeviceScanner : IHidDeviceScanner
         string? serial = SafeString(d.GetSerialNumber);
         string? name = SafeString(d.GetProductName);
         int featureLength = SafeInt(d.GetMaxFeatureReportLength);
-        return new DeviceInfo(d.DevicePath, d.VendorID, d.ProductID, serial, name, featureLength);
+        int inputLength = SafeInt(d.GetMaxInputReportLength);
+        int outputLength = SafeInt(d.GetMaxOutputReportLength);
+        return new DeviceInfo(d.DevicePath, d.VendorID, d.ProductID, serial, name, featureLength, inputLength, outputLength);
     }
 
     private static string? SafeString(Func<string?> getter)
@@ -55,10 +57,26 @@ public sealed class HidDeviceScanner : IHidDeviceScanner
 
 public static class DevicePicker
 {
-    public static DeviceInfo? PickBest(IEnumerable<DeviceInfo> devices) =>
-        devices
+    public static DeviceInfo? PickBest(IEnumerable<DeviceInfo> devices)
+    {
+        DeviceInfo[] list = devices as DeviceInfo[] ?? devices.ToArray();
+
+        DeviceInfo? wireless = list
+            .Where(d => d.VendorId == AulaDeviceIds.VendorWireless
+                        && d.ProductId == AulaDeviceIds.ProductWireless)
+            .Where(d => d.MaxOutputReportLength > 0)
+            .OrderByDescending(d => d.MaxOutputReportLength)
+            .ThenBy(d => d.DevicePath, StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (wireless is not null)
+        {
+            return wireless;
+        }
+
+        return list
             .Where(d => d.MaxFeatureReportLength > 0)
             .OrderByDescending(d => d.MaxFeatureReportLength)
             .ThenBy(d => d.DevicePath, StringComparer.Ordinal)
             .FirstOrDefault();
+    }
 }

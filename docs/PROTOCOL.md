@@ -4,30 +4,81 @@ Hardware: AULA F75, wired USB, SinoWealth chipset, VID `258A:010C`.
 Reference model: AULA F87 (same chipset, same VID/PID).
 All findings below were verified on a live F75 unless marked otherwise.
 
-## Wireless (2.4 GHz) support — VERIFIED
+## Wireless (2.4 GHz) — protocol 0x13 (field-verified)
 
 The F75 is a tri-mode board (wired + 2.4 GHz dongle + Bluetooth). The 2.4 GHz
-receiver presents itself as a separate HID device and is **fully controllable
-with the exact same feature-report protocol** as the wired link — no code
-changes required.
+receiver uses a **completely different protocol** from the wired link: 20-byte
+HID **output reports with Report ID `0x13`**, not feature reports. This is the
+same family as the AULA F87 / F99 Pro (`3554:FA09`).
 
-- Receiver: `VID 3554:PID FA09` ("2.4G Wireless Receiver", Compx/CX), same as
-  Royal Kludge vendors. Other PIDs in the `3554` family are a different (mouse)
-  receiver and are NOT this keyboard — don't add them to the scanner.
-- Wired: `VID 258A:PID 010C`.
+- Receiver: `VID 3554:PID FA09` ("2.4G Wireless Receiver"). Other PIDs in the
+  `3554` family are a different (mouse) receiver and are NOT this keyboard.
+- Wired: `VID 258A:PID 010C` (feature-report protocol, frame `0x06`, below).
+- The wired frame-06 protocol (`GET_FEATURE`) **does not work over the dongle**:
+  `dump` returns zeros, `col06` (feature=8) answers with the "canister" header
+  `06 84 01/02/03` + zeros. All lighting must go over protocol `0x13`.
 
-### Scanning note
+### Collection to use
 
-The receiver exposes **multiple HID interfaces**; most report
-`MaxFeatureReportLength = 0` and are useless. Only the interface with
-`feature = 8` is functional. `DevicePicker.PickBest()` already filters on
-`MaxFeatureReportLength > 0` and picks the correct one — verified by
-`aula list` (one entry `feature=8`) and live effect/dump/profile commands.
+The receiver exposes several HID interfaces. The lighting one is `col01` with
+`input=20 output=20`. `DevicePicker.PickBest()` prefers a wireless collection
+with `MaxOutputReportLength > 0` (highest first), falling back to feature-based
+picking for wired. Verified live: READ returns valid checksummed fragments.
+
+### Frame format
+
+Every fragment is a 20-byte output report, Report ID `0x13`:
+
+| offset | meaning |
+|---|---|
+| 0 | Report ID (`0x13`) |
+| 1 | command |
+| 2 | sub-command |
+| 3 | sequence (0..N) |
+| 4–18 | 15-byte payload |
+| 19 | checksum = `sum(bytes[0..18]) & 0xFF` |
+
+Every fragment sent by the host is **echoed back** by the receiver; the host
+should read the echo before sending the next fragment.
+
+Commands: `0x44` READ, `0x04` WRITE config, `0x09` color palette, `0x02`
+per-key map, `0x0A` save. Sub-commands: `0x0A` config, `0x25` palette, `0x1C`
+per-key, `0x01` confirm.
+
+### Read config
+
+- Send one `13 44 01 00` frame; the receiver echoes 10 fragments
+  (`13 44 0A <seq> ...`, seq 0–9). Fragments are the config.
+- Effect id lives in fragment 0 at `[15]`. The per-effect brightness/speed table
+  lives in fragments 4–6 (`_effect_table_loc`):
+  - effects 1–6 → fragment 4, offset `7 + (n-1)*2`
+  - effects 7–13 → fragment 5, offset `5 + (n-7)*2`
+  - effects 14–18 → fragment 6, offset `5 + (n-14)*2`
+- Brightness 0–9, speed 0–4; speed-flags nibble: `0x7` colorful, `0x0` single color.
+
+### Apply effect (4 phases)
+
+1. **Read** 10 config fragments.
+2. **Write config**: re-send each fragment with command `0x04`; on fragment 0 set
+   `[8]=0x01` (write flag), `[14]=0x00` (apply), `[15]=effect id`,
+   `[17]=0x01` if a color/colorful/per-key is used else `0x03`; on the effect's
+   table fragment set brightness / speed byte; recompute checksum.
+3. **Color palette**: 37 fragments (`0x09`/`0x25`). 21 from the factory template,
+   zeros to fragment 35, `08 00 00 5A A5 ...` trailer at fragment 36. The custom
+   color slot lives in fragment 1 payload `[8..10]` RGB + `[12]=0xFF` active.
+   Sent on every non-per-key apply (matches the OEM app).
+4. **Save**: single frame `13 0A 01 00 04 07 00...` (payload `04 07`).
+
+Per-key mode: write config with effect 21 + `[17]=0x01`, then 28 per-key frames
+(`0x02`/`0x1C`): 3 color planes × 9 fragments × 14 LEDs, each payload `0E` +
+14 bytes, then a trailer `06 00 00 5A A5`. F75 LED map = F87 (126 LEDs,
+indices 0–101, esc=0, f1=12 ... right=101).
 
 ### Verified commands over the dongle
 
-All of: `info` (model read), `effect`, `off`, `dump` (config + color profile),
-`profile save/apply` — worked over 2.4 GHz with zero code changes.
+`wireless read` (READ + fragment dump), `wireless effect <id> [--brightness]
+[--speed] [--color] [--colorful]` — effect, brightness and speed confirmed via
+read-back on a live F75. `perkey` and GUI tabs work through the wireless driver.
 
 ### Bluetooth — NOT supported by this protocol (field-verified)
 

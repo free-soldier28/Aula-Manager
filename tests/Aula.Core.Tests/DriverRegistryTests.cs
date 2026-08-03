@@ -12,11 +12,11 @@ public class DriverRegistryTests
         new("path://f75", AulaDeviceIds.VendorSinoWealth, AulaDeviceIds.ProductF75F87Wired, null, "AULA F75", 520);
 
     [Fact]
-    public void Default_RegistersF75AndF87()
+    public void Default_RegistersF75F87AndWireless()
     {
         Assert.NotNull(DriverRegistry.Default.ResolveByModelId("f75"));
         Assert.NotNull(DriverRegistry.Default.ResolveByModelId("f87"));
-        Assert.Equal(2, DriverRegistry.Default.Drivers.Count);
+        Assert.Equal(3, DriverRegistry.Default.Drivers.Count);
     }
 
     [Fact]

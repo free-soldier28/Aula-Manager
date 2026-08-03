@@ -49,6 +49,15 @@ public sealed record ProfileCommand(
 
 public sealed record UpdateCommand(string Action, bool Force = false) : CliCommand;
 
+public sealed record WirelessCommand(string Action, WirelessEffectCommand? Effect = null) : CliCommand;
+
+public sealed record WirelessEffectCommand(
+    int EffectId,
+    int? Brightness = null,
+    int? Speed = null,
+    RgbColor? Color = null,
+    bool Colorful = false) : CliCommand;
+
 public sealed record HelpCommand : CliCommand;
 
 public static class CliCommandParser
@@ -92,6 +101,9 @@ public static class CliCommandParser
             case "update":
                 return ParseUpdate(rest);
 
+            case "wireless":
+                return ParseWireless(rest);
+
             case "off":
                 return new OffCommand(GetModel(rest));
 
@@ -104,6 +116,70 @@ public static class CliCommandParser
             default:
                 throw new CliParseException($"Unknown command '{verb}'. Run 'aula help' for usage.");
         }
+    }
+
+    private static WirelessCommand ParseWireless(string[] args)
+    {
+        if (args.Length == 0)
+        {
+            return new WirelessCommand("read");
+        }
+
+        string action = args[0].ToLowerInvariant();
+        switch (action)
+        {
+            case "scan":
+                return new WirelessCommand("scan");
+            case "read":
+                return new WirelessCommand("read");
+            case "effect":
+                return ParseWirelessEffect(args[1..]);
+            default:
+                throw new CliParseException($"Unknown wireless action '{action}'. Use scan, read or effect.");
+        }
+    }
+
+    private static WirelessCommand ParseWirelessEffect(string[] args)
+    {
+        if (args.Length == 0)
+        {
+            throw new CliParseException("Usage: aula wireless effect <name|id> [options]");
+        }
+
+        int effectId = ResolveEffectId(args[0]);
+        string[] rest = args[1..];
+
+        int? brightness = null;
+        int? speed = null;
+        RgbColor? color = null;
+        bool colorful = false;
+
+        for (int i = 0; i < rest.Length; i++)
+        {
+            string arg = rest[i];
+            switch (arg.ToLowerInvariant())
+            {
+                case "--brightness":
+                case "-b":
+                    brightness = ParseInt(rest, ref i, arg);
+                    break;
+                case "--speed":
+                case "-s":
+                    speed = ParseInt(rest, ref i, arg);
+                    break;
+                case "--color":
+                case "-c":
+                    color = ParseColor(rest, ref i);
+                    break;
+                case "--colorful":
+                    colorful = true;
+                    break;
+                default:
+                    throw new CliParseException($"Unknown option '{arg}'.");
+            }
+        }
+
+        return new WirelessCommand("effect", new WirelessEffectCommand(effectId, brightness, speed, color, colorful));
     }
 
     private static ResetCommand ParseReset(string[] args)

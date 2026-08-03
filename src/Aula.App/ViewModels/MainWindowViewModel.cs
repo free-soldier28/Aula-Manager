@@ -27,8 +27,12 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private int _selectedTab;
 
+    [ObservableProperty]
+    private bool _isDeviceConnected;
+
     private void OnSessionChanged()
     {
+        IsDeviceConnected = _session.IsConnected;
         Lighting.RefreshFromDevice();
         PerKey.RefreshFromDevice();
         Profiles.RefreshList();

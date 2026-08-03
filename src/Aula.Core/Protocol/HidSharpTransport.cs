@@ -77,6 +77,44 @@ public sealed class HidSharpTransport : IHidTransport
         }
     }
 
+    public void WriteOutput(byte[] buffer)
+    {
+        EnsureOpen();
+
+        try
+        {
+            _stream!.Write(buffer);
+        }
+        catch (Exception ex)
+        {
+            throw new AulaTransportException($"WriteOutput failed: {ex.Message}", ex);
+        }
+    }
+
+    public int ReadInput(byte[] buffer, int timeoutMs)
+    {
+        EnsureOpen();
+
+        int previous = _stream!.ReadTimeout;
+        try
+        {
+            _stream.ReadTimeout = timeoutMs;
+            return _stream.Read(buffer);
+        }
+        catch (TimeoutException)
+        {
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            throw new AulaTransportException($"ReadInput failed: {ex.Message}", ex);
+        }
+        finally
+        {
+            _stream.ReadTimeout = previous;
+        }
+    }
+
     public void Dispose() => Close();
 
     private void EnsureOpen()

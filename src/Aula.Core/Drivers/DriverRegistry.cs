@@ -14,7 +14,9 @@ public sealed class DriverRegistry
 
     public void Register(IKeyboardDriver driver)
     {
-        _drivers.RemoveAll(d => string.Equals(d.Model.Id, driver.Model.Id, StringComparison.OrdinalIgnoreCase));
+        _drivers.RemoveAll(d =>
+            string.Equals(d.Model.Id, driver.Model.Id, StringComparison.OrdinalIgnoreCase)
+            && d.GetType() == driver.GetType());
         _drivers.Add(driver);
     }
 
@@ -31,6 +33,7 @@ public sealed class DriverRegistry
 
         registry.Register(new SinoWealthFeatureDriver(ModelConfig.F75, transportFactory));
         registry.Register(new SinoWealthFeatureDriver(ModelConfig.F87, transportFactory));
+        registry.Register(new WirelessSinoWealthDriver(ModelConfig.F75, transportFactory));
 
         return registry;
     }

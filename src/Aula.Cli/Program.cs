@@ -2,7 +2,9 @@
 using Aula.Core;
 using Aula.Core.Abstractions;
 using Aula.Core.Devices;
+using Aula.Core.Drivers;
 using Aula.Core.Models;
+using Aula.Core.Protocol;
 using Aula.Core.Services;
 using Aula.Core.Updating;
 
@@ -47,6 +49,7 @@ public static class Program
         ProfileCommand c => RunProfile(c),
         UpdateCommand c => RunUpdate(c).GetAwaiter().GetResult(),
         DumpCommand c => RunDump(c),
+        WirelessCommand c => RunWireless(c),
         _ => 0,
     };
 
@@ -62,10 +65,128 @@ public static class Program
         foreach (DeviceInfo device in devices)
         {
             Console.WriteLine(
-                $"{device.VendorId:X4}:{device.ProductId:X4}  {device.DisplayName}  feature={device.MaxFeatureReportLength}  {device.DevicePath}");
+                $"{device.VendorId:X4}:{device.ProductId:X4}  {device.DisplayName}  " +
+                $"feature={device.MaxFeatureReportLength}  input={device.MaxInputReportLength}  output={device.MaxOutputReportLength}  {device.DevicePath}");
         }
 
         return 0;
+    }
+
+    private static int RunWireless(WirelessCommand c)
+    {
+        return c.Action switch
+        {
+            "scan" => WirelessScan(),
+            "read" => WirelessRead(),
+            "effect" => WirelessEffect(c.Effect!),
+            _ => Print($"Unknown wireless action '{c.Action}'. Use scan, read or effect.", error: true),
+        };
+    }
+
+    private static int WirelessEffect(WirelessEffectCommand c)
+    {
+        using IAulaKeyboard keyboard = OpenWirelessKeyboard();
+        var config = new LightingConfig(c.EffectId, c.Brightness, c.Speed, c.Color, c.Colorful);
+        keyboard.Lighting.Apply(config);
+
+        string colorText = c.Color is { } color ? color.ToHex() : c.Colorful ? "colorful" : "-";
+        Console.WriteLine($"Wireless: applied effect '{config.EffectId}' brightness={config.Brightness?.ToString() ?? "-"} " +
+                          $"speed={config.Speed?.ToString() ?? "-"} color={colorText}");
+        return 0;
+    }
+
+    private static IAulaKeyboard OpenWirelessKeyboard()
+    {
+        IReadOnlyList<DeviceInfo> collections = new HidDeviceScanner().ScanAll()
+            .Where(d => d.VendorId == AulaDeviceIds.VendorWireless && d.ProductId == AulaDeviceIds.ProductWireless)
+            .Where(d => d.MaxOutputReportLength > 0)
+            .ToList();
+
+        if (collections.Count == 0)
+        {
+            throw new AulaException("2.4G receiver not found. Pair the dongle and try again.");
+        }
+
+        return new KeyboardDeviceFactory().TryOpen() ?? throw new AulaException("No AULA device found for the 2.4G receiver.");
+    }
+
+    private static int WirelessScan()
+    {
+        IReadOnlyList<DeviceInfo> devices = new HidDeviceScanner().ScanAll()
+            .Where(d => d.VendorId == AulaDeviceIds.VendorWireless && d.ProductId == AulaDeviceIds.ProductWireless)
+            .ToList();
+
+        if (devices.Count == 0)
+        {
+            Console.WriteLine("No 2.4G receiver found.");
+            return 1;
+        }
+
+        Console.WriteLine($"2.4G receiver ({devices.Count} collection(s)):");
+        foreach (DeviceInfo device in devices)
+        {
+            Console.WriteLine(
+                $"  feature={device.MaxFeatureReportLength,-2} input={device.MaxInputReportLength,-3} output={device.MaxOutputReportLength,-3}  {device.DevicePath}");
+        }
+
+        return 0;
+    }
+
+    private static int WirelessRead()
+    {
+        IReadOnlyList<DeviceInfo> collections = new HidDeviceScanner().ScanAll()
+            .Where(d => d.VendorId == AulaDeviceIds.VendorWireless && d.ProductId == AulaDeviceIds.ProductWireless)
+            .Where(d => d.MaxOutputReportLength > 0)
+            .ToList();
+
+        if (collections.Count == 0)
+        {
+            Console.WriteLine("No 2.4G receiver collection with an output report found.");
+            return 1;
+        }
+
+        var factory = new HidSharpTransportFactory();
+        bool anyResponse = false;
+
+        foreach (DeviceInfo collection in collections)
+        {
+            Console.WriteLine($"Probing {collection.DevicePath}");
+            Console.WriteLine(
+                $"  feature={collection.MaxFeatureReportLength}  input={collection.MaxInputReportLength}  output={collection.MaxOutputReportLength}");
+
+            using IHidTransport transport = factory.Create(collection);
+            try
+            {
+                transport.Open();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  open failed: {ex.Message}");
+                continue;
+            }
+
+            var protocol = new WirelessProtocol(transport);
+            byte[]?[] config = protocol.ReadConfig();
+            int received = config.Count(f => f is not null);
+            Console.WriteLine($"  READ config: {received}/10 fragments");
+
+            for (int i = 0; i < config.Length; i++)
+            {
+                if (config[i] is { } fragment)
+                {
+                    anyResponse = true;
+                    bool valid = WirelessProtocol.HasValidChecksum(fragment);
+                    Console.WriteLine($"    [{i:00}] {(valid ? "OK " : "BAD")} {Convert.ToHexString(fragment)}");
+                }
+            }
+
+            if (received == 0)
+            {
+                Console.WriteLine("  no response on this collection");
+            }
+        }
+
+        return anyResponse ? 0 : 1;
     }
 
     private static int RunInfo(InfoCommand c)
@@ -448,6 +569,13 @@ public static class Program
               update check           Check GitHub for a new version
               update install         Download and install the new version
                      [--force]       apply immediately (skips confirmation)
+              wireless scan          List 2.4G receiver collections
+              wireless read          Read and print the 2.4G lighting config
+              wireless effect <id>   Apply an effect over the 2.4G receiver
+                     [--brightness N]   0-9
+                     [--speed N]        0-4
+                     [--color #RRGGBB]  single color (also: --color R G B)
+                     [--colorful]       rainbow/colorful mode
               help                   Show this help
 
             Models: f75 (default), f87
